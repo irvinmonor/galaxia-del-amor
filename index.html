@@ -937,6 +937,8 @@ function posicionDe(clave) {
 }
 
 let hls = null;
+let cerrandoAdrede = false;   // para no pausar dos veces al cerrar el reproductor
+
 function cargarScript(url) {
   return new Promise((ok, mal) => {
     const s = document.createElement("script");
@@ -945,7 +947,22 @@ function cargarScript(url) {
   });
 }
 
+/* pantalla completa, contemplando iPhone (que solo la permite sobre el <video>) */
+function entrarPantallaCompleta() {
+  const el = playerVideo;
+  try {
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (vid.webkitEnterFullscreen) vid.webkitEnterFullscreen();
+  } catch (e) {}
+}
+function enPantallaCompleta() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
 async function abrirVideo(v) {
+  // se pide aquí, aún dentro del clic del usuario (si no, el navegador lo bloquea)
+  entrarPantallaCompleta();
   document.getElementById("tituloReproduciendo").textContent = v.titulo || v.nombre;
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
@@ -991,6 +1008,7 @@ function avisoReanudar(texto) {
 }
 
 function cerrarReproductor() {
+  cerrandoAdrede = true;          // evita que el pausado automático se dispare al cerrar
   guardarPosicion();
   videoActual = null;
   vid.pause();
@@ -998,7 +1016,10 @@ function cerrarReproductor() {
   vid.removeAttribute("src");
   vid.load();
   playerVideo.classList.remove("abierto", "cargando", "pausado", "ocultar-ui");
-  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (enPantallaCompleta()) {
+    try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
+  }
+  setTimeout(() => { cerrandoAdrede = false; }, 300);
 }
 
 function alternarPlay() { vid.paused ? vid.play().catch(() => {}) : vid.pause(); }
@@ -1070,10 +1091,22 @@ barraTiempo.addEventListener("touchmove", e => { if (arrastrandoBarra) buscarEn(
 barraTiempo.addEventListener("touchend", () => { arrastrandoBarra = false; }, { passive: true });
 
 function pantallaCompleta() {
-  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  else playerVideo.requestFullscreen().catch(() => {});
+  if (enPantallaCompleta()) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else entrarPantallaCompleta();
 }
 document.getElementById("btnPantalla").addEventListener("click", pantallaCompleta);
+
+/* al salir de pantalla completa se pausa solo */
+function alSalirDePantallaCompleta() {
+  if (cerrandoAdrede) return;
+  if (!enPantallaCompleta() && playerVideo.classList.contains("abierto") && !vid.paused) {
+    vid.pause();
+  }
+}
+["fullscreenchange", "webkitfullscreenchange"].forEach(ev =>
+  document.addEventListener(ev, alSalirDePantallaCompleta));
+vid.addEventListener("webkitendfullscreen", alSalirDePantallaCompleta);   // iPhone
 
 /* ocultar controles cuando no hay movimiento */
 let tempUI = null;
