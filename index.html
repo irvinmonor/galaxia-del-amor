@@ -32,6 +32,13 @@
   --rosa:#ff6bd6; --rosa2:#ff2e9a; --lila:#b388ff; --fondo:#0a0018;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* para las visitas: sin seleccionar textos ni arrastrar imágenes (el admin sí puede) */
+body.protegido{
+  -webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+}
+body.protegido img,body.protegido video,body.protegido svg{-webkit-user-drag:none;user-drag:none}
+body.protegido input[type=range]{-webkit-user-select:auto;user-select:auto}
 html,body{margin:0;height:100%;background:var(--fondo);overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;color:#fff}
 /* la galaxia SOLO se ve dentro de la galaxia: así nunca se asoma detrás
    del inicio ni de Jeniflix mientras algo se desvanece */
@@ -737,6 +744,17 @@ function ráfagaCorazones(x, y, n = 8) {
    🚀 INICIO — todo lo que depende de CONFIG y FOTOS
    ============================================================ */
 function iniciar() {
+
+/* --- bloqueo de selección y clic derecho (el admin queda exento) --- */
+if (!ES_ADMIN) {
+  document.body.classList.add("protegido");
+  addEventListener("contextmenu", e => e.preventDefault());
+  addEventListener("dragstart", e => e.preventDefault());
+  addEventListener("selectstart", e => {
+    // los controles (como la barra de volumen) sí deben seguir respondiendo
+    if (!e.target.closest || !e.target.closest("input,textarea,button")) e.preventDefault();
+  });
+}
 
 /* --- textos y fondo de la intro --- */
 document.getElementById("kittyIntro").innerHTML = kittySVG();
