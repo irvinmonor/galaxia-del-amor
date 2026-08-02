@@ -157,21 +157,86 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
   position:fixed;inset:0;z-index:6500;background:#000;display:none;align-items:center;justify-content:center;
 }
 #playerVideo.abierto{display:flex}
-#vsPlayer{width:100%;max-height:100vh;--media-brand:#e50914;--media-focus-ring-color:#e50914}
-media-player{ --video-brand:#e50914 }
-/* tema Netflix para los controles de Vidstack */
-.vds-slider-track-fill,.vds-time-slider .vds-slider-track-fill{background:#e50914!important}
-.vds-slider-thumb{background:#e50914!important;border-color:#e50914!important}
-.vds-button:hover{color:#e50914!important}
-.vds-menu-item[aria-checked=true]{color:#e50914!important}
-#cerrarVideo{
-  position:absolute;top:14px;right:16px;z-index:20;border:none;background:rgba(255,255,255,.12);color:#fff;
-  width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;transition:background .2s;
+#playerVideo{cursor:default}
+#playerVideo.sin-cursor{cursor:none}
+#vid{width:100%;height:100%;max-height:100vh;object-fit:contain;background:#000;outline:none}
+
+/* capa superior: título y cerrar */
+#capaSuperior{
+  position:absolute;top:0;left:0;right:0;z-index:20;padding:16px 20px;display:flex;align-items:center;gap:16px;
+  background:linear-gradient(rgba(0,0,0,.75),transparent);
+  transition:opacity .3s;
 }
-#cerrarVideo:hover{background:#e50914}
+#playerVideo.ocultar-ui #capaSuperior,#playerVideo.ocultar-ui #controles{opacity:0;pointer-events:none}
+#cerrarVideo{
+  border:none;background:rgba(255,255,255,.14);color:#fff;width:42px;height:42px;min-width:42px;
+  border-radius:50%;font-size:18px;cursor:pointer;transition:background .2s,transform .2s;
+}
+#cerrarVideo:hover{background:#e50914;transform:scale(1.08)}
 #tituloReproduciendo{
-  position:absolute;top:20px;left:24px;z-index:19;color:#fff;font-size:19px;font-weight:600;
-  text-shadow:0 2px 12px rgba(0,0,0,.9);pointer-events:none;max-width:60%;
+  color:#fff;font-size:19px;font-weight:600;text-shadow:0 2px 12px rgba(0,0,0,.9);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* botón gigante de play */
+#playGigante{
+  position:absolute;z-index:18;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:88px;height:88px;border-radius:50%;border:none;cursor:pointer;color:#fff;
+  background:rgba(229,9,20,.9);box-shadow:0 6px 30px rgba(0,0,0,.6);
+  display:none;align-items:center;justify-content:center;transition:transform .2s,background .2s;
+}
+#playerVideo.pausado #playGigante{display:flex}
+#playGigante:hover{transform:translate(-50%,-50%) scale(1.1);background:#e50914}
+#playGigante svg{width:44px;height:44px}
+
+/* spinner de carga */
+#cargandoVid{position:absolute;z-index:17;left:50%;top:50%;transform:translate(-50%,-50%);display:none}
+#playerVideo.cargando #cargandoVid{display:block}
+#playerVideo.cargando #playGigante{display:none}
+#cargandoVid .aro{
+  width:56px;height:56px;border-radius:50%;
+  border:4px solid rgba(255,255,255,.18);border-top-color:#e50914;
+  animation:girarAro .8s linear infinite;
+}
+@keyframes girarAro{to{transform:rotate(360deg)}}
+
+/* controles inferiores */
+#controles{
+  position:absolute;left:0;right:0;bottom:0;z-index:20;padding:0 20px 14px;
+  background:linear-gradient(transparent,rgba(0,0,0,.55) 35%,rgba(0,0,0,.92));
+  transition:opacity .3s;
+}
+#barraTiempo{padding:14px 0 6px;cursor:pointer}
+#pistaTiempo{position:relative;height:5px;background:rgba(255,255,255,.28);border-radius:999px;transition:height .15s}
+#barraTiempo:hover #pistaTiempo{height:8px}
+#bufferTiempo{position:absolute;inset:0;width:0%;background:rgba(255,255,255,.35);border-radius:999px}
+#progresoTiempo{position:absolute;inset:0;width:0%;background:#e50914;border-radius:999px}
+#perilla{
+  position:absolute;right:-7px;top:50%;transform:translateY(-50%) scale(0);
+  width:14px;height:14px;border-radius:50%;background:#e50914;box-shadow:0 0 8px rgba(229,9,20,.9);
+  transition:transform .15s;
+}
+#barraTiempo:hover #perilla{transform:translateY(-50%) scale(1)}
+#botonera{display:flex;align-items:center;gap:14px;padding-bottom:4px}
+#botonera button{
+  background:none;border:none;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;
+  transition:transform .18s,color .18s;
+}
+#botonera button:hover{color:#e50914;transform:scale(1.15)}
+#botonera svg{width:26px;height:26px}
+#tiempos{color:#ddd;font-size:13.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.flexible{flex:1}
+#zonaVolumen{display:flex;align-items:center;gap:6px}
+#volumen{
+  width:0;opacity:0;transition:width .25s,opacity .25s;accent-color:#e50914;cursor:pointer;height:4px;
+}
+#zonaVolumen:hover #volumen{width:80px;opacity:1}
+@media (max-width:600px){
+  #botonera{gap:9px}
+  #botonera svg{width:23px;height:23px}
+  #tiempos{font-size:12px}
+  #zonaVolumen #volumen{display:none}
+  #tituloReproduciendo{font-size:15px}
 }
 
 /* ---------- ANIMACIÓN N ---------- */
@@ -380,12 +445,45 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
   </div>
 </div>
 <div id="playerVideo">
-  <button id="cerrarVideo">✕</button>
-  <div id="tituloReproduciendo"></div>
-  <media-player id="vsPlayer" playsinline autoplay>
-    <media-provider></media-provider>
-    <media-video-layout></media-video-layout>
-  </media-player>
+  <video id="vid" playsinline preload="metadata"></video>
+
+  <div id="cargandoVid"><div class="aro"></div></div>
+
+  <div id="capaSuperior">
+    <button id="cerrarVideo" title="Cerrar (Esc)">✕</button>
+    <div id="tituloReproduciendo"></div>
+  </div>
+
+  <button id="playGigante" title="Reproducir">
+    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+  </button>
+
+  <div id="controles">
+    <div id="barraTiempo">
+      <div id="pistaTiempo">
+        <div id="bufferTiempo"></div>
+        <div id="progresoTiempo"><span id="perilla"></span></div>
+      </div>
+    </div>
+    <div id="botonera">
+      <button id="btnPlay" title="Reproducir/Pausar (espacio)"></button>
+      <button id="btnAtras" title="Retroceder 10s">
+        <svg viewBox="0 0 24 24"><path d="M12.5 8V4l-5 5 5 5V10a5 5 0 1 1-5 5H6a7 7 0 1 0 6.5-7z" fill="currentColor"/></svg>
+      </button>
+      <button id="btnAdelante" title="Adelantar 10s">
+        <svg viewBox="0 0 24 24"><path d="M11.5 8V4l5 5-5 5V10a5 5 0 1 0 5 5H18a7 7 0 1 1-6.5-7z" fill="currentColor"/></svg>
+      </button>
+      <div id="zonaVolumen">
+        <button id="btnVol" title="Silenciar (M)"></button>
+        <input id="volumen" type="range" min="0" max="1" step="0.05" value="1">
+      </div>
+      <span id="tiempos">0:00 / 0:00</span>
+      <span class="flexible"></span>
+      <button id="btnPantalla" title="Pantalla completa (F)">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- ======= ANIMACIÓN N (estilo intro de Netflix) ======= -->
@@ -441,9 +539,6 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 
 <audio id="audio" loop></audio>
 
-<link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css">
-<link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css">
-<script src="https://cdn.vidstack.io/player" type="module"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
@@ -647,7 +742,7 @@ function sonidoTudum() {
 const netflixUI = document.getElementById("netflixUI");
 const gridVideos = document.getElementById("gridVideos");
 const playerVideo = document.getElementById("playerVideo");
-const vsPlayer = document.getElementById("vsPlayer");
+const vid = document.getElementById("vid");
 
 function pintarVideos() {
   gridVideos.innerHTML = "";
@@ -660,22 +755,173 @@ function pintarVideos() {
       <video src="${v.url}#t=1" preload="metadata" muted playsinline></video>
       <div class="play-ico">▶</div>
       <div class="nombre-video">${v.nombre}</div>`;
-    card.addEventListener("click", () => {
-      document.getElementById("tituloReproduciendo").textContent = v.nombre;
-      vsPlayer.setAttribute("title", v.nombre);
-      vsPlayer.src = v.url;
-      playerVideo.classList.add("abierto");
-    });
+    card.addEventListener("click", () => abrirVideo(v));
     gridVideos.appendChild(card);
   });
 }
-function cerrarReproductor() {
-  try { vsPlayer.pause(); } catch(e) {}
-  vsPlayer.src = "";
-  playerVideo.classList.remove("abierto");
+
+/* ============================================================
+   ▶️ REPRODUCTOR ESTILO NETFLIX (sobre <video> nativo)
+   ============================================================ */
+const ICONO_PLAY  = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+const ICONO_PAUSA = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>';
+const ICONO_VOL   = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" fill="currentColor"/></svg>';
+const ICONO_MUDO  = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm18.5-1.1-1.4-1.4L17 9.6l-3.1-3.1v2.8l1.7 1.7L17 12.8l3.1 3.1 1.4-1.4L18.4 11l3.1-3.1z" fill="currentColor"/></svg>';
+
+const btnPlay = document.getElementById("btnPlay"),
+      btnVol = document.getElementById("btnVol"),
+      volumen = document.getElementById("volumen"),
+      tiempos = document.getElementById("tiempos"),
+      barraTiempo = document.getElementById("barraTiempo"),
+      progresoTiempo = document.getElementById("progresoTiempo"),
+      bufferTiempo = document.getElementById("bufferTiempo"),
+      playGigante = document.getElementById("playGigante");
+
+function reloj(s) {
+  if (!isFinite(s) || s < 0) return "0:00";
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), g = Math.floor(s % 60);
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(g).padStart(2, "0");
 }
+
+let hls = null;
+function cargarScript(url) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = url; s.onload = ok; s.onerror = mal;
+    document.head.appendChild(s);
+  });
+}
+
+async function abrirVideo(v) {
+  document.getElementById("tituloReproduciendo").textContent = v.nombre;
+  playerVideo.classList.add("abierto", "cargando");
+  playerVideo.classList.remove("ocultar-ui");
+
+  if (hls) { hls.destroy(); hls = null; }
+  const esHls = /\.m3u8(\?|$)/i.test(v.url);
+
+  // Safari reproduce HLS nativo; los demás navegadores usan hls.js
+  if (esHls && !vid.canPlayType("application/vnd.apple.mpegurl")) {
+    try {
+      if (!window.Hls) await cargarScript("https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js");
+      hls = new window.Hls();
+      hls.loadSource(v.url);
+      hls.attachMedia(vid);
+    } catch (e) { vid.src = v.url; }
+  } else {
+    vid.src = v.url;
+    vid.load();
+  }
+
+  vid.play().catch(() => {});   // si el navegador bloquea, queda el botón gigante
+  moverRaton();
+}
+
+function cerrarReproductor() {
+  vid.pause();
+  if (hls) { hls.destroy(); hls = null; }
+  vid.removeAttribute("src");
+  vid.load();
+  playerVideo.classList.remove("abierto", "cargando", "pausado", "ocultar-ui");
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+
+function alternarPlay() { vid.paused ? vid.play().catch(() => {}) : vid.pause(); }
+
+vid.addEventListener("play", () => { playerVideo.classList.remove("pausado"); btnPlay.innerHTML = ICONO_PAUSA; });
+vid.addEventListener("pause", () => { playerVideo.classList.add("pausado"); btnPlay.innerHTML = ICONO_PLAY; mostrarUI(); });
+vid.addEventListener("waiting", () => playerVideo.classList.add("cargando"));
+vid.addEventListener("playing", () => playerVideo.classList.remove("cargando"));
+vid.addEventListener("canplay", () => playerVideo.classList.remove("cargando"));
+vid.addEventListener("loadedmetadata", () => { playerVideo.classList.remove("cargando"); pintarTiempo(); });
+vid.addEventListener("timeupdate", pintarTiempo);
+vid.addEventListener("progress", () => {
+  if (vid.buffered.length && vid.duration) {
+    bufferTiempo.style.width = (vid.buffered.end(vid.buffered.length - 1) / vid.duration * 100) + "%";
+  }
+});
+vid.addEventListener("ended", () => { playerVideo.classList.add("pausado"); mostrarUI(); });
+vid.addEventListener("error", () => {
+  playerVideo.classList.remove("cargando");
+  document.getElementById("tituloReproduciendo").textContent = "No se pudo cargar el video 😢";
+});
+
+function pintarTiempo() {
+  const d = vid.duration || 0;
+  progresoTiempo.style.width = (d ? vid.currentTime / d * 100 : 0) + "%";
+  tiempos.textContent = reloj(vid.currentTime) + " / " + reloj(d);
+}
+
+btnPlay.innerHTML = ICONO_PLAY;
+btnVol.innerHTML = ICONO_VOL;
+btnPlay.addEventListener("click", alternarPlay);
+playGigante.addEventListener("click", alternarPlay);
+vid.addEventListener("click", alternarPlay);
+vid.addEventListener("dblclick", pantallaCompleta);
+document.getElementById("btnAtras").addEventListener("click", () => { vid.currentTime = Math.max(0, vid.currentTime - 10); });
+document.getElementById("btnAdelante").addEventListener("click", () => { vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 10); });
+
+btnVol.addEventListener("click", () => {
+  vid.muted = !vid.muted;
+  btnVol.innerHTML = vid.muted || !vid.volume ? ICONO_MUDO : ICONO_VOL;
+  volumen.value = vid.muted ? 0 : vid.volume;
+});
+volumen.addEventListener("input", () => {
+  vid.volume = +volumen.value;
+  vid.muted = +volumen.value === 0;
+  btnVol.innerHTML = vid.muted ? ICONO_MUDO : ICONO_VOL;
+});
+
+/* barra de tiempo: clic y arrastre */
+let arrastrandoBarra = false;
+function buscarEn(e) {
+  const r = barraTiempo.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+  const f = Math.max(0, Math.min(1, x / r.width));
+  if (isFinite(vid.duration)) { vid.currentTime = f * vid.duration; pintarTiempo(); }
+}
+barraTiempo.addEventListener("mousedown", e => { arrastrandoBarra = true; buscarEn(e); });
+addEventListener("mousemove", e => { if (arrastrandoBarra) buscarEn(e); });
+addEventListener("mouseup", () => { arrastrandoBarra = false; });
+barraTiempo.addEventListener("touchstart", e => { arrastrandoBarra = true; buscarEn(e); }, { passive: true });
+barraTiempo.addEventListener("touchmove", e => { if (arrastrandoBarra) buscarEn(e); }, { passive: true });
+barraTiempo.addEventListener("touchend", () => { arrastrandoBarra = false; }, { passive: true });
+
+function pantallaCompleta() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else playerVideo.requestFullscreen().catch(() => {});
+}
+document.getElementById("btnPantalla").addEventListener("click", pantallaCompleta);
+
+/* ocultar controles cuando no hay movimiento */
+let tempUI = null;
+function mostrarUI() {
+  playerVideo.classList.remove("ocultar-ui", "sin-cursor");
+  clearTimeout(tempUI);
+}
+function moverRaton() {
+  mostrarUI();
+  tempUI = setTimeout(() => {
+    if (!vid.paused) playerVideo.classList.add("ocultar-ui", "sin-cursor");
+  }, 3000);
+}
+playerVideo.addEventListener("mousemove", moverRaton);
+playerVideo.addEventListener("touchstart", moverRaton, { passive: true });
+
 document.getElementById("cerrarVideo").addEventListener("click", cerrarReproductor);
-addEventListener("keydown", e => { if (e.key === "Escape" && playerVideo.classList.contains("abierto")) cerrarReproductor(); });
+addEventListener("keydown", e => {
+  if (!playerVideo.classList.contains("abierto")) return;
+  const t = e.key.toLowerCase();
+  if (e.key === "Escape") return cerrarReproductor();
+  if (e.key === " " || t === "k") { e.preventDefault(); alternarPlay(); }
+  else if (e.key === "ArrowRight") vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 10);
+  else if (e.key === "ArrowLeft") vid.currentTime = Math.max(0, vid.currentTime - 10);
+  else if (e.key === "ArrowUp") { vid.volume = Math.min(1, vid.volume + .1); volumen.value = vid.volume; }
+  else if (e.key === "ArrowDown") { vid.volume = Math.max(0, vid.volume - .1); volumen.value = vid.volume; }
+  else if (t === "f") pantallaCompleta();
+  else if (t === "m") btnVol.click();
+  moverRaton();
+});
 document.getElementById("btnVolverFlix").addEventListener("click", () => {
   netflixUI.classList.remove("abierta");
   document.getElementById("intro").classList.remove("oculto");
