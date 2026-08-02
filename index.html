@@ -448,7 +448,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
           <path d="M54 6 H66 V80 Q66 100 47 100 Q40 100 40 92 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="url(#jSombra)" opacity=".75"/>
         </svg>
       </div>
-      <span>Nuestros videos</span>
+      <span id="etiquetaFlix">Películas</span>
     </div>
     <div class="tile tile-q" id="tileSorpresa">
       <div class="tile-cara">
@@ -589,6 +589,7 @@ const DEFAULTS = {
   sorpresaMensaje: "Se desbloquea el 12 de agosto",
   flixTitulo: "Nuestros videos 💕",
   flixLogo: "JENIFLIX",
+  flixEtiqueta: "Películas",
   fondoPortada: "",   // URL de imagen de fondo para la portada (vacío = tema oscuro)
   musicaActiva: false,
   musicaUrl: "https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1",
@@ -802,6 +803,7 @@ function sonidoTudum() {
 /* --- textos editables de Jeniflix --- */
 document.getElementById("flixTitulo").textContent = CONFIG.flixTitulo || DEFAULTS.flixTitulo;
 document.getElementById("logoFlix").textContent = CONFIG.flixLogo || DEFAULTS.flixLogo;
+document.getElementById("etiquetaFlix").textContent = CONFIG.flixEtiqueta || DEFAULTS.flixEtiqueta;
 
 /* --- recordar en qué pantalla se quedaron --- */
 const CLAVE_PANTALLA = "jeniflix_pantalla";

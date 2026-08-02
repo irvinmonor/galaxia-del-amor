@@ -231,6 +231,8 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         <input type="text" id="fFlixTitulo" placeholder="Nuestros videos 💕">
         <label>Nombre del logo (arriba a la izquierda)</label>
         <input type="text" id="fFlixLogo" placeholder="JENIFLIX">
+        <label>Texto bajo el cuadro de la J (en la portada)</label>
+        <input type="text" id="fFlixEtiqueta" placeholder="Películas">
         <button class="btn" id="btnGuardarFlix" style="margin-bottom:18px">💾 Guardar encabezado</button>
 
         <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4, webm, mov, mkv… varios a la vez)</small></div>
@@ -396,7 +398,11 @@ function seccion(cual) {
 $("btnGuardarFlix").addEventListener("click", async () => {
   const b = $("btnGuardarFlix"); b.disabled = true;
   try {
-    await guardarConfig({ flixTitulo: $("fFlixTitulo").value.trim(), flixLogo: $("fFlixLogo").value.trim() });
+    await guardarConfig({
+      flixTitulo: $("fFlixTitulo").value.trim(),
+      flixLogo: $("fFlixLogo").value.trim(),
+      flixEtiqueta: $("fFlixEtiqueta").value.trim()
+    });
     aviso("Encabezado guardado ✅");
   } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
   b.disabled = false;
@@ -430,6 +436,7 @@ async function cargarConfig() {
   $("fFondo").value = d.fondoPortada || "";
   $("fFlixTitulo").value = d.flixTitulo || "Nuestros videos 💕";
   $("fFlixLogo").value = d.flixLogo || "JENIFLIX";
+  $("fFlixEtiqueta").value = d.flixEtiqueta || "Películas";
   pintarPreviewFondo();
 }
 
