@@ -33,7 +33,10 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--fondo);overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;color:#fff}
-canvas#c{display:block;position:fixed;inset:0}
+/* la galaxia SOLO se ve dentro de la galaxia: así nunca se asoma detrás
+   del inicio ni de Jeniflix mientras algo se desvanece */
+canvas#c{display:none;position:fixed;inset:0}
+body.iniciado canvas#c{display:block}
 
 /* ---------- PANTALLA DE ENTRADA ---------- */
 #intro{
@@ -46,9 +49,12 @@ canvas#c{display:block;position:fixed;inset:0}
 /* hasta que cargan los datos, el contenido está invisible: evita ver los textos por defecto */
 #intro > *{opacity:0;transition:opacity .5s ease}
 body.datos-listos #intro > *{opacity:1}
-/* al restaurar la pantalla no debe haber ninguna animación de por medio */
+/* al cambiar de pantalla no debe haber ninguna animación de por medio:
+   si algo se desvanece, se alcanza a ver lo que hay detrás */
 body.restaurando #intro,body.restaurando #intro > *,body.restaurando #cargando,
-body.restaurando #netflixUI{transition:none!important}
+body.restaurando #netflixUI,body.restaurando #playerVideo,
+body.restaurando .sticker,body.restaurando #topbar,body.restaurando #player,
+body.restaurando #hint{transition:none!important}
 #cargando{
   position:fixed;inset:0;z-index:5200;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(ellipse at 50% 40%, #2a0a4a 0%, #12002b 55%, #05000f 100%);
@@ -797,6 +803,15 @@ const CLAVE_PANTALLA = "jeniflix_pantalla";
 function recordarPantalla(p) { try { localStorage.setItem(CLAVE_PANTALLA, p); } catch (e) {} }
 function pantallaGuardada() { try { return localStorage.getItem(CLAVE_PANTALLA); } catch (e) { return null; } }
 
+/* Ejecuta un cambio de pantalla sin animaciones, para que nunca se asome
+   lo que hay debajo mientras algo se desvanece. */
+function sinTransicion(cambio) {
+  document.body.classList.add("restaurando");
+  cambio();
+  void document.body.offsetHeight;   // obliga a aplicar los estilos ya mismo
+  setTimeout(() => document.body.classList.remove("restaurando"), 80);
+}
+
 /* --- MODO NETFLIX --- */
 const netflixUI = document.getElementById("netflixUI");
 const gridVideos = document.getElementById("gridVideos");
@@ -1052,8 +1067,10 @@ addEventListener("keydown", e => {
   moverRaton();
 });
 function volverAlInicio() {
-  netflixUI.classList.remove("abierta");
-  document.getElementById("intro").classList.remove("oculto");
+  sinTransicion(() => {
+    netflixUI.classList.remove("abierta");
+    document.getElementById("intro").classList.remove("oculto");
+  });
   recordarPantalla("inicio");
 }
 document.getElementById("btnVolverFlix").addEventListener("click", volverAlInicio);
@@ -1095,19 +1112,13 @@ modalSorpresa.addEventListener("click", e => { if (e.target === modalSorpresa) m
 /* Al recargar, volver a donde estaban. Se hace ANTES de revelar la pantalla
    (y sin transiciones) para que no se alcance a ver el inicio. */
 fondoListo.then(() => {
-  document.body.classList.add("restaurando");   // congela las transiciones
-  const p = pantallaGuardada();
-  if (p === "jeniflix") entrarJeniflix(false);
-  else if (p === "galaxia" && desbloqueada) entrarGalaxia();
-  else if (p === "galaxia") recordarPantalla("inicio");   // ya no tiene acceso
-
-  // se revela en el mismo fotograma: como las transiciones están congeladas,
-  // el navegador pinta directo el estado final y no se ve el inicio
-  document.body.classList.add("datos-listos");
-  // obliga a aplicar los estilos AHORA (aún sin transiciones); si no,
-  // al descongelarlas el inicio se desvanecería lentamente y se vería
-  void document.body.offsetHeight;
-  setTimeout(() => document.body.classList.remove("restaurando"), 80);
+  sinTransicion(() => {
+    const p = pantallaGuardada();
+    if (p === "jeniflix") entrarJeniflix(false);
+    else if (p === "galaxia" && desbloqueada) entrarGalaxia();
+    else if (p === "galaxia") recordarPantalla("inicio");   // ya no tiene acceso
+    document.body.classList.add("datos-listos");            // recién ahora se revela
+  });
 });
 
 /* --- reproductor --- */
@@ -1464,6 +1475,8 @@ addEventListener("resize", () => {
 let t = 0;
 (function anima() {
   requestAnimationFrame(anima);
+  // si la galaxia no está a la vista, no hay nada que dibujar (ahorra batería)
+  if (!document.body.classList.contains("iniciado")) return;
   t += .01;
 
   if (galaxia) galaxia.rotation.y += .0006;
