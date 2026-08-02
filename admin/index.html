@@ -72,6 +72,44 @@ textarea{resize:vertical;min-height:90px}
 .vid button:hover{background:#e02451;color:#fff}
 .vid .nom{position:absolute;left:0;right:0;bottom:0;font-size:11px;color:#ddd;padding:10px 6px 4px;background:linear-gradient(transparent,rgba(0,0,0,.85));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #contadorVideos{font-size:13px;color:#9f86c9;margin-top:10px}
+/* lista ordenable de videos */
+#gridVideosAdmin{display:block;margin-top:16px}
+.vfila{
+  display:flex;align-items:center;gap:12px;padding:10px;margin-bottom:9px;border-radius:12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(229,9,20,.3);transition:background .2s,opacity .2s;
+}
+.vfila:hover{background:rgba(255,255,255,.08)}
+.vfila.terminada{opacity:.62;border-color:rgba(120,200,140,.35)}
+.vpos{
+  min-width:26px;height:26px;border-radius:50%;background:rgba(229,9,20,.85);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;flex:none;
+}
+.vfila.terminada .vpos{background:rgba(74,222,128,.75)}
+.vmini{width:88px;height:50px;object-fit:cover;border-radius:8px;background:#000;flex:none}
+.vinfo{flex:1;min-width:0}
+.vnom{font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmeta{font-size:11.5px;color:#9f86c9;margin-top:3px}
+.vmeta .fin{color:#8dffc4}
+.vacciones{display:flex;gap:5px;flex:none}
+.vbtn{
+  border:1px solid var(--borde);background:rgba(0,0,0,.35);color:#ffd1ec;width:32px;height:32px;
+  border-radius:9px;cursor:pointer;font-size:13px;transition:all .18s;
+}
+.vbtn:hover{background:var(--rosa2);color:#fff;transform:translateY(-2px)}
+.vbtn.peligro:hover{background:#e02451}
+@media (max-width:600px){
+  .vmini{width:62px;height:38px}
+  .vbtn{width:29px;height:29px;font-size:12px}
+  .vacciones{gap:3px}
+}
+/* botones sobre las fotos */
+.foto .acciones{position:absolute;top:6px;right:6px;display:flex;gap:5px}
+.foto .acciones button{
+  position:static;border:none;background:rgba(0,0,0,.7);color:#ffd1ec;width:28px;height:28px;
+  border-radius:50%;cursor:pointer;font-size:12px;transition:background .18s;
+}
+.foto .acciones button:hover{background:var(--rosa2);color:#fff}
+.foto .acciones button.del:hover{background:#e02451}
 #zonaDropFondo{
   border:2px dashed var(--borde);border-radius:16px;padding:24px 20px;text-align:center;color:#c9a6ff;
   cursor:pointer;transition:all .25s;font-size:14px;
@@ -168,6 +206,10 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
           Se guardan en <b>Backblaze B2</b> y se ven con reproductor Vidstack estilo Netflix.
           El nombre del archivo se usa como título. Formatos: mp4, webm, mov, mkv, avi, m3u8, mpd y más.
           Los mayores de 200 MB se suben por partes automáticamente (hasta 10 TB por archivo).
+        </p>
+        <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 10px">
+          Con <b>▲▼</b> cambias el orden en que aparecen, con <b>✔</b> marcas una como
+          <b>Terminada</b> (se van solas hasta el final) y con <b>🔗</b> copias su link.
         </p>
         <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4, webm, mov, mkv… varios a la vez)</small></div>
         <input type="file" id="inputVideos" accept="video/*,.mkv,.avi,.m3u8,.mpd,.ogv,.3gp,.flv,.wmv" multiple class="oculto">
@@ -334,9 +376,14 @@ $("tabGalaxia").addEventListener("click", () => seccion("galaxia"));
 $("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); vista("vistaLogin"); });
 
 /* ---------- CONFIG ---------- */
+let CONFIG_DATA = {};        // copia de todo lo guardado, para no perder campos al guardar
+let META = {};               // { fileName: { orden: 0, terminada: false } }
+
 async function cargarConfig() {
   const { data } = await sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle();
   const d = (data && data.data) || {};
+  CONFIG_DATA = d;
+  META = d.videosMeta || {};
   $("fNombre").value = d.nombre || "JENIFFER";
   $("fTitulo").value = d.tituloIntro || "Para Ti, Jeniffer 💖";
   $("fSubtitulo").value = d.subtituloIntro || "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.";
@@ -351,6 +398,13 @@ async function cargarConfig() {
   $("fSorpresaMsg").value = d.sorpresaMensaje || "Se desbloquea el 12 de agosto";
   $("fFondo").value = d.fondoPortada || "";
   pintarPreviewFondo();
+}
+
+/* guarda mezclando con lo que ya había (no pisa videosMeta ni campos futuros) */
+async function guardarConfig(parcial) {
+  CONFIG_DATA = Object.assign({}, CONFIG_DATA, parcial);
+  const { error } = await sb.from("galaxia_config").upsert({ id: 1, data: CONFIG_DATA });
+  if (error) throw new Error(error.message);
 }
 
 $("btnGuardar").addEventListener("click", async () => {
@@ -373,9 +427,9 @@ $("btnGuardar").addEventListener("click", async () => {
   const frasesKitty = lineas($("fFrasesKitty").value);
   if (frases.length) data.frases = frases;
   if (frasesKitty.length) data.frasesKitty = frasesKitty;
-  const { error } = await sb.from("galaxia_config").upsert({ id: 1, data });
+  try { await guardarConfig(data); }
+  catch (e) { btn.disabled = false; return aviso("Error al guardar: " + e.message, "error"); }
   btn.disabled = false;
-  if (error) return aviso("Error al guardar: " + error.message, "error");
   aviso("¡Guardado! Los cambios ya están en vivo. 💖");
 });
 
@@ -422,8 +476,13 @@ async function cargarFotos() {
   fotos.forEach(f => {
     const div = document.createElement("div");
     div.className = "foto";
-    div.innerHTML = `<img src="${f.url}" loading="lazy" alt=""><button title="Borrar">🗑</button>`;
-    div.querySelector("button").addEventListener("click", async () => {
+    div.innerHTML = `<img src="${f.url}" loading="lazy" alt="">
+      <div class="acciones">
+        <button class="cop" title="Copiar link">🔗</button>
+        <button class="del" title="Borrar">🗑</button>
+      </div>`;
+    div.querySelector(".cop").addEventListener("click", () => copiar(f.url, "la foto"));
+    div.querySelector(".del").addEventListener("click", async () => {
       if (!confirm("¿Borrar esta foto de la galaxia?")) return;
       const tok = await tokenSesion();
       const r = await fetch("/api/borrar", {
@@ -730,32 +789,116 @@ async function subirVideos(files) {
   cargarVideos();
 }
 
+let VIDS = [];   // lista actual, ya ordenada como se verá en Jeniflix
+
+function ordenarVids() {
+  VIDS.sort((a, b) => {
+    const ma = META[a.fileName] || {}, mb = META[b.fileName] || {};
+    if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;   // terminadas al final
+    const oa = ma.orden === undefined ? 9999 : ma.orden;
+    const ob = mb.orden === undefined ? 9999 : mb.orden;
+    return oa - ob;
+  });
+}
+
+/* reescribe los índices según la posición actual y guarda */
+async function guardarOrden(mensaje) {
+  const nueva = {};
+  VIDS.forEach((v, i) => {
+    nueva[v.fileName] = Object.assign({}, META[v.fileName], { orden: i });
+  });
+  META = nueva;
+  try { await guardarConfig({ videosMeta: META }); aviso(mensaje || "Orden guardado ✅"); }
+  catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+}
+
+async function copiar(texto, queEs) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    aviso("Link de " + queEs + " copiado 📋");
+  } catch (e) {
+    // respaldo para navegadores que no permiten el portapapeles
+    const t = document.createElement("textarea");
+    t.value = texto; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); aviso("Link de " + queEs + " copiado 📋"); }
+    catch (e2) { prompt("Copia el link:", texto); }
+    t.remove();
+  }
+}
+
 async function cargarVideos() {
   let j;
   try { j = await pedirJSON("/api/archivos?carpeta=videos"); }
   catch (e) { return aviso("No se pudieron cargar los videos: " + e.message, "error"); }
   if (j.error) return aviso("Backblaze: " + j.error, "error");
+  VIDS = j.archivos || [];
+  ordenarVids();
+  pintarVids();
+}
+
+function pintarVids() {
   gridV.innerHTML = "";
-  const vids = j.archivos || [];
-  vids.forEach(v => {
-    const div = document.createElement("div");
-    div.className = "vid";
-    div.innerHTML = `<video src="${v.url}#t=1" preload="metadata" muted playsinline></video><button title="Borrar">🗑</button><div class="nom">${v.nombre}</div>`;
-    div.querySelector("button").addEventListener("click", async () => {
-      if (!confirm("¿Borrar este video del modo Netflix?")) return;
+  VIDS.forEach((v, i) => {
+    const m = META[v.fileName] || {};
+    const fila = document.createElement("div");
+    fila.className = "vfila" + (m.terminada ? " terminada" : "");
+    fila.innerHTML = `
+      <span class="vpos">${i + 1}</span>
+      <video class="vmini" src="${v.url}#t=1" preload="metadata" muted playsinline></video>
+      <div class="vinfo">
+        <div class="vnom">${v.nombre}</div>
+        <div class="vmeta">${pesoLegible(v.tam || 0)}${m.terminada ? ' · <b class="fin">✔ Terminada</b>' : ""}</div>
+      </div>
+      <div class="vacciones">
+        <button class="vbtn" data-a="subir"  title="Subir en la lista">▲</button>
+        <button class="vbtn" data-a="bajar"  title="Bajar en la lista">▼</button>
+        <button class="vbtn" data-a="fin"    title="Marcar como terminada">${m.terminada ? "↩" : "✔"}</button>
+        <button class="vbtn" data-a="link"   title="Copiar link">🔗</button>
+        <button class="vbtn peligro" data-a="borrar" title="Borrar">🗑</button>
+      </div>`;
+
+    fila.querySelector('[data-a=subir]').addEventListener("click", () => mover(i, -1));
+    fila.querySelector('[data-a=bajar]').addEventListener("click", () => mover(i, 1));
+    fila.querySelector('[data-a=link]').addEventListener("click", () => copiar(v.url, "video"));
+    fila.querySelector('[data-a=fin]').addEventListener("click", async () => {
+      META[v.fileName] = Object.assign({}, META[v.fileName], { terminada: !m.terminada });
+      ordenarVids(); pintarVids();
+      await guardarOrden(m.terminada ? "Marcada como pendiente 🍿" : "¡Marcada como terminada! ✔");
+    });
+    fila.querySelector('[data-a=borrar]').addEventListener("click", async () => {
+      if (!confirm("¿Borrar «" + v.nombre + "» del modo Netflix?")) return;
       const tok = await tokenSesion();
       const r = await fetch("/api/borrar", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
         body: JSON.stringify({ fileName: v.fileName, fileId: v.fileId })
       });
-      const res = await r.json();
+      const res = await r.json().catch(() => ({}));
       if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error");
+      delete META[v.fileName];
+      await guardarConfig({ videosMeta: META }).catch(() => {});
       cargarVideos();
     });
-    gridV.appendChild(div);
+    gridV.appendChild(fila);
   });
-  $("contadorVideos").textContent = vids.length ? vids.length + " video(s) en el modo Netflix" : "Aún no hay videos — sube el primero 🎬";
+
+  const term = VIDS.filter(v => (META[v.fileName] || {}).terminada).length;
+  $("contadorVideos").textContent = VIDS.length
+    ? VIDS.length + " video(s) · " + term + " terminado(s) · así es el orden en Jeniflix"
+    : "Aún no hay videos — sube el primero 🎬";
+}
+
+async function mover(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= VIDS.length) return;
+  // no dejar mezclar terminadas con pendientes
+  const ta = !!(META[VIDS[i].fileName] || {}).terminada;
+  const tb = !!(META[VIDS[j].fileName] || {}).terminada;
+  if (ta !== tb) return aviso("Las terminadas siempre van al final. Quítale la palomita para moverla. 🙂", "error");
+  [VIDS[i], VIDS[j]] = [VIDS[j], VIDS[i]];
+  pintarVids();
+  await guardarOrden();
 }
 
 /* ---------- FONDO DE PORTADA ---------- */

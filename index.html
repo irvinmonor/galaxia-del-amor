@@ -155,6 +155,12 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
   display:none;position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.3);
 }
 .card-video .visto span{display:block;height:100%;width:0%;background:#e50914}
+.card-video.vista{opacity:.62}
+.card-video.vista:hover{opacity:1}
+.card-video .sello{
+  position:absolute;top:8px;left:8px;background:rgba(20,120,60,.9);color:#dcffe9;
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;letter-spacing:.3px;
+}
 
 /* ---------- REPRODUCTOR DE VIDEO ---------- */
 #playerVideo{
@@ -634,7 +640,19 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
       fetch("/api/archivos?carpeta=videos"),
       fetch("/api/archivos?carpeta=fotos")
     ]);
-    if (rv.ok) VIDEOS = (await rv.json()).archivos || [];
+    if (rv.ok) {
+      VIDEOS = (await rv.json()).archivos || [];
+      // orden del panel: pendientes primero (por su orden), terminadas al final
+      const meta = CONFIG.videosMeta || {};
+      VIDEOS.sort((a, b) => {
+        const ma = meta[a.fileName] || {}, mb = meta[b.fileName] || {};
+        if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;
+        const oa = ma.orden === undefined ? 9999 : ma.orden;
+        const ob = mb.orden === undefined ? 9999 : mb.orden;
+        return oa - ob;
+      });
+      VIDEOS.forEach(v => { v.terminada = !!(meta[v.fileName] || {}).terminada; });
+    }
     if (rf.ok) FOTOS = ((await rf.json()).archivos || []).map(f => f.url);
   } catch (e) {
     console.warn("No se pudieron cargar los archivos:", e);
@@ -765,10 +783,11 @@ function pintarVideos() {
   document.getElementById("sinVideos").style.display = "none";
   VIDEOS.forEach(v => {
     const card = document.createElement("div");
-    card.className = "card-video";
+    card.className = "card-video" + (v.terminada ? " vista" : "");
     card.innerHTML = `
       <video src="${v.url}#t=1" preload="metadata" muted playsinline></video>
       <div class="play-ico">▶</div>
+      ${v.terminada ? '<div class="sello">✔ Ya la vimos</div>' : ""}
       <div class="nombre-video">${v.nombre}</div>
       <div class="visto"><span></span></div>`;
     const vistoSeg = leerVistos()[v.fileName || v.url];
