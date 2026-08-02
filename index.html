@@ -159,10 +159,10 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 <!-- ======= PANTALLA DE ENTRADA ======= -->
 <div id="intro">
   <div class="kitty-intro" id="kittyIntro"></div>
-  <h1 id="tituloIntro">Para Ti, Mi Amor 💖</h1>
-  <p>Hice una galaxia entera solo para ti…<br>porque ni todo el universo alcanza para decirte cuánto te amo.</p>
+  <h1 id="tituloIntro">Para Ti 💖</h1>
+  <p id="subtituloIntro">Hice una galaxia entera solo para ti…<br>porque ni todo el universo alcanza para decirte cuánto te amo.</p>
   <button id="btnEntrar">💫 Entrar a nuestra galaxia</button>
-  <small>🎧 Sube el volumen para la sorpresa completa</small>
+  <small>✨ Gira la galaxia con tu dedo</small>
 </div>
 
 <!-- ======= ESCENA 3D ======= -->
@@ -194,19 +194,22 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
   </div>
 </div>
 
-<audio id="audio" loop>
-  <source src="https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1" type="audio/mpeg">
-</audio>
+<audio id="audio" loop></audio>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 <script>
 /* ============================================================
-   ✏️  CONFIGURACIÓN — EDITA AQUÍ SIN MIEDO
+   ✏️  VALORES POR DEFECTO
+   (si el panel /admin ya guardó datos en Supabase, se usan esos)
    ============================================================ */
-const CONFIG = {
-  musicaActiva: false,                       // 🎵 pon en true para reactivar la canción y el reproductor
-  nombre: "JENIFFER",                        // 💕 nombre de tu persona especial
+const DEFAULTS = {
+  musicaActiva: false,
+  musicaUrl: "https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1",
+  nombre: "JENIFFER",
   tituloIntro: "Para Ti, Jeniffer 💖",
+  subtituloIntro: "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.",
   mensajeCentral: "TE AMO ❤️",
   firma: "— Con todo mi corazón, tuyo por siempre 💍",
   carta: `Mi amor:
@@ -240,6 +243,36 @@ Te amo hoy, te amo mañana, y te amaré en cada galaxia que exista. ✨`,
   ]
 };
 
+let CONFIG = DEFAULTS;
+let FOTOS = [];   // URLs públicas de las fotos subidas desde /admin
+
+/* ============================================================
+   ☁️ CARGA REMOTA (Supabase) con respaldo local
+   ============================================================ */
+(async function arranque() {
+  try {
+    const cred = window.GALAXIA_SUPABASE;
+    if (cred && cred.url && cred.url.indexOf("https") === 0 && window.supabase) {
+      const sb = window.supabase.createClient(cred.url, cred.anonKey);
+      const [cfgRes, fotosRes] = await Promise.all([
+        sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle(),
+        sb.storage.from("fotos").list("", { limit: 300, sortBy: { column: "created_at", order: "asc" } })
+      ]);
+      if (cfgRes.data && cfgRes.data.data && Object.keys(cfgRes.data.data).length) {
+        CONFIG = Object.assign({}, DEFAULTS, cfgRes.data.data);
+      }
+      if (fotosRes.data) {
+        FOTOS = fotosRes.data
+          .filter(f => f.name && !f.name.startsWith("."))
+          .map(f => sb.storage.from("fotos").getPublicUrl(f.name).data.publicUrl);
+      }
+    }
+  } catch (e) {
+    console.warn("Supabase no disponible, usando valores locales:", e);
+  }
+  iniciar();
+})();
+
 /* ============================================================
    🐱 STICKER KAWAII (gatita con moño, estilo kitty)
    ============================================================ */
@@ -247,59 +280,73 @@ function kittySVG(color = "#ff5aa7", moño = "#ff2e9a") {
   return `
   <svg viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
     <g>
-      <!-- orejas -->
       <path d="M18 38 Q12 8 34 16 L48 26 Z" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
       <path d="M102 38 Q108 8 86 16 L72 26 Z" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
-      <!-- cabeza -->
       <ellipse cx="60" cy="58" rx="46" ry="38" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
-      <!-- moño -->
       <g transform="translate(84,24) rotate(18)">
         <circle cx="0" cy="0" r="7" fill="${moño}"/>
         <path d="M-2 0 Q-20 -14 -16 2 Q-14 12 -2 2 Z" fill="${moño}"/>
         <path d="M2 0 Q20 -14 16 2 Q14 12 2 2 Z" fill="${moño}"/>
       </g>
-      <!-- ojos -->
       <ellipse cx="42" cy="58" rx="4.5" ry="6.5" fill="#3b2b3a"/>
       <ellipse cx="78" cy="58" rx="4.5" ry="6.5" fill="#3b2b3a"/>
       <circle cx="43.5" cy="55.5" r="1.6" fill="#fff"/>
       <circle cx="79.5" cy="55.5" r="1.6" fill="#fff"/>
-      <!-- nariz -->
       <ellipse cx="60" cy="66" rx="4.5" ry="3.4" fill="#ffd93b"/>
-      <!-- bigotes -->
       <g stroke="#3b2b3a" stroke-width="2.6" stroke-linecap="round">
         <line x1="6"  y1="52" x2="26" y2="56"/><line x1="4"  y1="64" x2="25" y2="64"/><line x1="6"  y1="76" x2="26" y2="71"/>
         <line x1="114" y1="52" x2="94" y2="56"/><line x1="116" y1="64" x2="95" y2="64"/><line x1="114" y1="76" x2="94" y2="71"/>
       </g>
-      <!-- chapitas -->
       <ellipse cx="34" cy="70" rx="6" ry="4" fill="${color}" opacity=".45"/>
       <ellipse cx="86" cy="70" rx="6" ry="4" fill="${color}" opacity=".45"/>
-      <!-- corazón -->
       <path d="M60 96 l-9-8 a6 6 0 1 1 9-7 a6 6 0 1 1 9 7 Z" fill="${moño}"/>
     </g>
   </svg>`;
 }
 
 /* ============================================================
-   🚪 INTRO
+   💖 CORAZONES QUE SUBEN (DOM) — disponible desde el inicio
    ============================================================ */
+const EMOJIS = ["💖","💕","💗","💓","💘","❤️","🩷","💜"];
+function ráfagaCorazones(x, y, n = 8) {
+  for (let i = 0; i < n; i++) {
+    const h = document.createElement("div");
+    h.className = "corazon-up";
+    h.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    h.style.left = (x + (Math.random() - .5) * 90) + "px";
+    h.style.top = (y + (Math.random() - .5) * 30) + "px";
+    h.style.fontSize = (16 + Math.random() * 18) + "px";
+    h.style.animationDuration = (2.2 + Math.random() * 2) + "s";
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 4500);
+  }
+}
+
+/* ============================================================
+   🚀 INICIO — todo lo que depende de CONFIG y FOTOS
+   ============================================================ */
+function iniciar() {
+
+/* --- textos de la intro --- */
 document.getElementById("kittyIntro").innerHTML = kittySVG();
 document.getElementById("tituloIntro").textContent = CONFIG.tituloIntro;
+document.getElementById("subtituloIntro").innerText = CONFIG.subtituloIntro;
 
+/* --- audio --- */
 const audio = document.getElementById("audio");
-if (!CONFIG.musicaActiva) document.getElementById("player").style.display = "none";
+if (CONFIG.musicaActiva && CONFIG.musicaUrl) audio.src = CONFIG.musicaUrl;
+else document.getElementById("player").style.display = "none";
 
 document.getElementById("btnEntrar").addEventListener("click", async () => {
   document.getElementById("intro").classList.add("oculto");
   document.body.classList.add("iniciado");
   if (CONFIG.musicaActiva) {
-    try { await audio.play(); estadoPlay(true); } catch(e) { /* el usuario puede darle play manual */ }
+    try { await audio.play(); estadoPlay(true); } catch(e) { /* play manual */ }
   }
   setTimeout(() => document.getElementById("hint").classList.add("fuera"), 7000);
 });
 
-/* ============================================================
-   🎵 REPRODUCTOR
-   ============================================================ */
+/* --- reproductor --- */
 const playBtn = document.getElementById("play"),
       progress = document.getElementById("progress"),
       progressBar = document.getElementById("progress-bar"),
@@ -323,9 +370,7 @@ progress.addEventListener("click", e => {
   if (isFinite(audio.duration)) audio.currentTime = f * audio.duration;
 });
 
-/* ============================================================
-   💌 CARTA CON EFECTO MÁQUINA DE ESCRIBIR
-   ============================================================ */
+/* --- carta máquina de escribir --- */
 const modal = document.getElementById("modalCarta"),
       textoCarta = document.getElementById("textoCarta"),
       firmaCarta = document.getElementById("firmaCarta");
@@ -347,9 +392,7 @@ document.getElementById("btnCarta").addEventListener("click", () => {
 document.getElementById("cerrarCarta").addEventListener("click", () => { modal.classList.remove("abierta"); clearInterval(escribiendo); });
 modal.addEventListener("click", e => { if (e.target === modal) { modal.classList.remove("abierta"); clearInterval(escribiendo); } });
 
-/* ============================================================
-   🐱 STICKERS FLOTANTES + BURBUJAS
-   ============================================================ */
+/* --- stickers flotantes --- */
 const posiciones = [
   {left:"4%",  top:"16%", dur:"3.6s"},
   {right:"5%", top:"20%", dur:"4.4s"},
@@ -380,23 +423,6 @@ posiciones.forEach((pos, i) => {
   document.body.appendChild(el);
 });
 
-/* ============================================================
-   💖 CORAZONES QUE SUBEN (DOM)
-   ============================================================ */
-const EMOJIS = ["💖","💕","💗","💓","💘","❤️","🩷","💜"];
-function ráfagaCorazones(x, y, n = 8) {
-  for (let i = 0; i < n; i++) {
-    const h = document.createElement("div");
-    h.className = "corazon-up";
-    h.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-    h.style.left = (x + (Math.random() - .5) * 90) + "px";
-    h.style.top = (y + (Math.random() - .5) * 30) + "px";
-    h.style.fontSize = (16 + Math.random() * 18) + "px";
-    h.style.animationDuration = (2.2 + Math.random() * 2) + "s";
-    document.body.appendChild(h);
-    setTimeout(() => h.remove(), 4500);
-  }
-}
 document.getElementById("btnLluvia").addEventListener("click", () => {
   let veces = 0;
   const iv = setInterval(() => {
@@ -406,7 +432,7 @@ document.getElementById("btnLluvia").addEventListener("click", () => {
 });
 
 /* ============================================================
-   🌌 ESCENA 3D (three.js)
+   🌌 ESCENA 3D
    ============================================================ */
 const canvas = document.getElementById("c");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -418,7 +444,6 @@ scene.fog = new THREE.FogExp2(0x0a0018, 0.0011);
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 6000);
 let targetDist = 300, currentDist = 380, rotX = .25, rotY = 0;
 
-/* --- textura corazón para partículas --- */
 function texturaCorazon(color = "#ff4fa0") {
   const c = document.createElement("canvas"); c.width = c.height = 64;
   const x = c.getContext("2d");
@@ -440,7 +465,8 @@ function texturaBrillo() {
   return new THREE.CanvasTexture(c);
 }
 
-/* --- galaxia espiral rosa/lila --- */
+/* --- galaxia espiral --- */
+let galaxia;
 (function galaxiaEspiral() {
   const N = 9000, brazos = 4;
   const geo = new THREE.BufferGeometry();
@@ -464,8 +490,8 @@ function texturaBrillo() {
     size: 2.6, map: texturaBrillo(), vertexColors: true, transparent: true,
     depthWrite: false, blending: THREE.AdditiveBlending
   });
-  window._galaxia = new THREE.Points(geo, mat);
-  scene.add(window._galaxia);
+  galaxia = new THREE.Points(geo, mat);
+  scene.add(galaxia);
 })();
 
 /* --- estrellas lejanas --- */
@@ -535,12 +561,78 @@ const nombreCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTex
 nombreCentro.scale.set(110, 27, 1); nombreCentro.position.y = -34; nombreCentro.renderOrder = 999;
 scene.add(nombreCentro);
 
-/* --- frases orbitando --- */
+/* ============================================================
+   📸 ANILLO DE FOTOS (subidas desde /admin)
+   ============================================================ */
+const grupoFotos = new THREE.Group();
+scene.add(grupoFotos);
+
+function texturaPolaroid(url) {
+  return new Promise(res => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const S = 256, b = 14, r = 18;
+      const c = document.createElement("canvas"); c.width = c.height = S;
+      const x = c.getContext("2d");
+      function rrect(x0, y0, w, h, rad) {
+        x.beginPath();
+        x.moveTo(x0 + rad, y0);
+        x.arcTo(x0 + w, y0, x0 + w, y0 + h, rad);
+        x.arcTo(x0 + w, y0 + h, x0, y0 + h, rad);
+        x.arcTo(x0, y0 + h, x0, y0, rad);
+        x.arcTo(x0, y0, x0 + w, y0, rad);
+        x.closePath();
+      }
+      x.shadowColor = "rgba(255,107,214,.9)"; x.shadowBlur = 10;
+      rrect(6, 6, S - 12, S - 12, r); x.fillStyle = "#fff"; x.fill();
+      x.shadowBlur = 0;
+      x.save();
+      rrect(6 + b, 6 + b, S - 12 - b * 2, S - 12 - b * 2, r - 8); x.clip();
+      const esc = Math.max((S - 12 - b*2) / img.width, (S - 12 - b*2) / img.height);
+      const w = img.width * esc, h = img.height * esc;
+      x.drawImage(img, 6 + b + (S - 12 - b*2 - w) / 2, 6 + b + (S - 12 - b*2 - h) / 2, w, h);
+      x.restore();
+      res(new THREE.CanvasTexture(c));
+    };
+    img.onerror = () => res(null);
+    img.src = url;
+  });
+}
+
+(async function crearAnilloFotos() {
+  if (!FOTOS.length) return;
+  const texturas = (await Promise.all(FOTOS.map(texturaPolaroid))).filter(Boolean);
+  if (!texturas.length) return;
+  const objetivo = Math.max(40, texturas.length);
+  const cartas = [];
+  while (cartas.length < objetivo) for (const t of texturas) { if (cartas.length >= objetivo) break; cartas.push(t); }
+  const total = cartas.length, vueltas = 2.5;
+  cartas.forEach((tex, i) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    const frac = i / total;
+    const ang = frac * Math.PI * 2 * vueltas + Math.random() * .15;
+    const r = 135 + frac * 190;
+    const s = 20 + Math.random() * 12;
+    sp.scale.set(s, s, 1);
+    sp.userData = {
+      ang, r,
+      vel: .0014 + Math.random() * .0014,
+      y0: Math.sin(ang * 1.6) * 42 + (Math.random() - .5) * 20,
+      fase: Math.random() * Math.PI * 2
+    };
+    sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
+    grupoFotos.add(sp);
+  });
+})();
+
+/* --- frases orbitando (se reducen si hay fotos) --- */
 const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
 const grupoFrases = new THREE.Group();
 scene.add(grupoFrases);
 const FRASES = [];
-for (let v = 0; v < 4; v++) FRASES.push(...CONFIG.frases);
+const copias = FOTOS.length ? 2 : 4;
+for (let v = 0; v < copias; v++) FRASES.push(...CONFIG.frases);
 FRASES.forEach((f, i) => {
   const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length], 640, 128);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -566,7 +658,7 @@ function lanzarFugaz() {
 }
 setInterval(() => { if (fugaces.length < 4) lanzarFugaz(); }, 2800);
 
-/* --- controles: arrastrar / rueda / pellizco --- */
+/* --- controles --- */
 let arrastrando = false, lx = 0, ly = 0, seMovio = false;
 function abajo(e){ arrastrando = true; seMovio = false; const t = e.touches ? e.touches[0] : e; lx = t.clientX; ly = t.clientY; }
 function mueve(e){
@@ -610,7 +702,7 @@ let t = 0;
   requestAnimationFrame(anima);
   t += .01;
 
-  if (window._galaxia) window._galaxia.rotation.y += .0006;
+  if (galaxia) galaxia.rotation.y += .0006;
 
   const lat = 1 + .09 * Math.pow(Math.abs(Math.sin(t * 2.4)), 3);
   corazonGrupo.scale.set(lat, lat, lat);
@@ -619,6 +711,12 @@ let t = 0;
   halo.scale.set(420 * (1 + .04 * Math.sin(t * .8)), 420 * (1 + .04 * Math.sin(t * .8)), 1);
   textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
   nombreCentro.position.y = -34 + Math.sin(t * 1.3) * 2.5;
+
+  grupoFotos.children.forEach(sp => {
+    const u = sp.userData;
+    u.ang += u.vel;
+    sp.position.set(Math.cos(u.ang) * u.r, u.y0 + Math.sin(t * 1.2 + u.fase) * 6, Math.sin(u.ang) * u.r);
+  });
 
   grupoFrases.children.forEach(sp => {
     const u = sp.userData;
@@ -644,6 +742,8 @@ let t = 0;
   camera.lookAt(0, 0, 0);
   renderer.render(scene, camera);
 })();
+
+} /* fin iniciar() */
 </script>
 </body>
 </html>

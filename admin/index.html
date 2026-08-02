@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel Admin 💖</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+<style>
+:root{ --rosa:#ff6bd6; --rosa2:#ff2e9a; --lila:#b388ff; --fondo:#0d0120; --panel:#170533; --borde:rgba(255,107,214,.35); }
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#1d0640,var(--fondo));font-family:'Segoe UI',Arial,sans-serif;color:#fff;padding:20px}
+.contenedor{max-width:860px;margin:0 auto}
+h1{font-size:26px;display:flex;align-items:center;gap:10px;margin:10px 0 20px}
+h1 span{background:linear-gradient(90deg,var(--rosa),var(--lila));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tarjeta{background:var(--panel);border:1px solid var(--borde);border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 4px 30px rgba(0,0,0,.4)}
+.tarjeta h2{margin:0 0 14px;font-size:17px;color:#ffd1ec}
+label{display:block;font-size:13px;color:#c9a6ff;margin:12px 0 5px}
+input[type=text],input[type=email],input[type=password],input[type=url],textarea{
+  width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--borde);
+  background:#0d0122;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border .2s;
+}
+input:focus,textarea:focus{border-color:var(--rosa)}
+textarea{resize:vertical;min-height:90px}
+.btn{
+  border:none;cursor:pointer;padding:12px 26px;border-radius:999px;font-size:15px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--rosa2),var(--lila));box-shadow:0 0 18px rgba(255,46,154,.5);
+  transition:transform .2s,opacity .2s;margin-top:14px;
+}
+.btn:hover{transform:scale(1.04)}
+.btn:disabled{opacity:.5;cursor:wait;transform:none}
+.btn.sec{background:transparent;border:1px solid var(--borde);box-shadow:none;font-weight:500}
+.btn.peligro{background:linear-gradient(135deg,#e02451,#8a1030)}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.aviso{padding:12px 16px;border-radius:12px;font-size:14px;margin:10px 0;display:none}
+.aviso.ok{display:block;background:rgba(46,220,130,.12);border:1px solid rgba(46,220,130,.4);color:#8dffc4}
+.aviso.error{display:block;background:rgba(255,60,90,.12);border:1px solid rgba(255,60,90,.4);color:#ff9aae}
+.oculto{display:none!important}
+/* fotos */
+#zonaDrop{
+  border:2px dashed var(--borde);border-radius:16px;padding:34px 20px;text-align:center;color:#c9a6ff;
+  cursor:pointer;transition:all .25s;font-size:15px;
+}
+#zonaDrop.encima{border-color:var(--rosa);background:rgba(255,46,154,.08)}
+#gridFotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin-top:16px}
+.foto{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;border:1px solid var(--borde)}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto button{
+  position:absolute;top:6px;right:6px;border:none;background:rgba(0,0,0,.65);color:#ff9aae;width:28px;height:28px;
+  border-radius:50%;cursor:pointer;font-size:13px;
+}
+.foto button:hover{background:#e02451;color:#fff}
+#contadorFotos{font-size:13px;color:#9f86c9;margin-top:10px}
+.toggle{display:flex;align-items:center;gap:10px;margin:12px 0;cursor:pointer;user-select:none}
+.toggle input{width:20px;height:20px;accent-color:var(--rosa2)}
+.enlace{color:var(--rosa);text-decoration:none;font-size:14px}
+.pie{color:#6d5590;font-size:12px;text-align:center;margin:26px 0 8px}
+.badge-mail{font-size:13px;color:#9f86c9}
+progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <h1>🔐 <span>Panel de Nuestra Galaxia</span></h1>
+  <div id="msg" class="aviso"></div>
+
+  <!-- SIN CONFIGURAR -->
+  <div id="vistaSinConfig" class="tarjeta oculto">
+    <h2>⚠️ Falta conectar Supabase</h2>
+    <p style="font-size:14px;line-height:1.7;color:#e8d7ff">
+      Abre el archivo <b>config.js</b> del proyecto y pega tu <b>Project URL</b> y tu <b>anon public key</b>
+      (los encuentras en Supabase → Project Settings → API). Luego sube el cambio con git push.
+    </p>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="vistaLogin" class="tarjeta oculto">
+    <h2 id="tituloLogin">Iniciar sesión</h2>
+    <label>Correo</label>
+    <input type="email" id="logEmail" placeholder="tucorreo@gmail.com" autocomplete="username">
+    <label>Contraseña</label>
+    <input type="password" id="logPass" placeholder="••••••••" autocomplete="current-password">
+    <div class="fila">
+      <button class="btn" id="btnLogin">Entrar 💫</button>
+      <button class="btn sec" id="btnModoRegistro">Primera vez: crear cuenta</button>
+    </div>
+    <div id="zonaRegistro" class="oculto">
+      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin-top:16px">
+        Crea la cuenta del administrador con el correo y contraseña de arriba.
+        <b>Importante:</b> después de crearla, desactiva los registros nuevos en
+        Supabase → Authentication → Sign In / Up → "Allow new users to sign up".
+      </p>
+      <button class="btn" id="btnRegistrar">Crear mi cuenta de admin ✨</button>
+    </div>
+  </div>
+
+  <!-- PANEL -->
+  <div id="vistaPanel" class="oculto">
+
+    <div class="tarjeta">
+      <div class="fila" style="justify-content:space-between">
+        <span class="badge-mail">Sesión: <b id="mailActual"></b></span>
+        <span>
+          <a class="enlace" href="../" target="_blank">Ver la página 💖</a>
+          &nbsp;&nbsp;<button class="btn sec" id="btnSalir" style="margin:0;padding:8px 18px">Salir</button>
+        </span>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>📸 Fotos de la galaxia</h2>
+      <div id="zonaDrop">Arrastra tus fotos aquí o haz clic para elegirlas<br><small>(puedes subir varias a la vez)</small></div>
+      <input type="file" id="inputFotos" accept="image/*" multiple class="oculto">
+      <progress id="barraSubida" max="100" value="0" class="oculto"></progress>
+      <div id="gridFotos"></div>
+      <div id="contadorFotos"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>💌 Textos de la página</h2>
+      <label>Nombre (centro de la galaxia)</label>
+      <input type="text" id="fNombre">
+      <label>Título de bienvenida</label>
+      <input type="text" id="fTitulo">
+      <label>Subtítulo de bienvenida</label>
+      <textarea id="fSubtitulo" style="min-height:60px"></textarea>
+      <label>Mensaje central (arriba del nombre)</label>
+      <input type="text" id="fMensaje">
+      <label>Carta de amor (botón 💌 Léeme)</label>
+      <textarea id="fCarta" style="min-height:160px"></textarea>
+      <label>Firma de la carta</label>
+      <input type="text" id="fFirma">
+      <label>Frases que orbitan (una por línea, con emoji)</label>
+      <textarea id="fFrases" style="min-height:140px"></textarea>
+      <label>Frases de los gatitos (una por línea)</label>
+      <textarea id="fFrasesKitty" style="min-height:100px"></textarea>
+    </div>
+
+    <div class="tarjeta">
+      <h2>🎵 Música</h2>
+      <label class="toggle"><input type="checkbox" id="fMusica"> Activar música de fondo</label>
+      <label>URL de la canción (mp3 directo)</label>
+      <input type="url" id="fMusicaUrl" placeholder="https://...mp3">
+    </div>
+
+    <button class="btn" id="btnGuardar" style="width:100%;font-size:17px">💾 Guardar todos los cambios</button>
+
+    <div class="tarjeta" style="margin-top:18px">
+      <h2>👤 Mi cuenta</h2>
+      <label>Cambiar correo</label>
+      <div class="fila">
+        <input type="email" id="nuevoMail" placeholder="nuevo@correo.com" style="flex:1;min-width:220px">
+        <button class="btn sec" id="btnCambiarMail" style="margin:0">Cambiar</button>
+      </div>
+      <label>Cambiar contraseña</label>
+      <div class="fila">
+        <input type="password" id="nuevaPass" placeholder="nueva contraseña (mín. 6)" style="flex:1;min-width:220px" autocomplete="new-password">
+        <button class="btn sec" id="btnCambiarPass" style="margin:0">Cambiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pie">Panel privado · nada de esto es visible en la página pública 💕</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../config.js"></script>
+<script>
+const cred = window.GALAXIA_SUPABASE || {};
+const configurado = cred.url && cred.url.indexOf("https") === 0 && cred.anonKey && cred.anonKey.length > 20;
+const $ = id => document.getElementById(id);
+const msg = $("msg");
+let sb = null;
+
+function aviso(texto, tipo) {
+  msg.textContent = texto;
+  msg.className = "aviso " + (tipo || "ok");
+  clearTimeout(aviso._t);
+  aviso._t = setTimeout(() => { msg.className = "aviso"; }, 5000);
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+function vista(v) {
+  ["vistaSinConfig","vistaLogin","vistaPanel"].forEach(x => $(x).classList.add("oculto"));
+  $(v).classList.remove("oculto");
+}
+
+if (!configurado) {
+  vista("vistaSinConfig");
+} else {
+  sb = window.supabase.createClient(cred.url, cred.anonKey);
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) entrar(data.session.user);
+    else vista("vistaLogin");
+  });
+}
+
+/* ---------- LOGIN / REGISTRO ---------- */
+$("btnModoRegistro").addEventListener("click", () => $("zonaRegistro").classList.toggle("oculto"));
+
+$("btnLogin").addEventListener("click", async () => {
+  const { data, error } = await sb.auth.signInWithPassword({ email: $("logEmail").value.trim(), password: $("logPass").value });
+  if (error) return aviso("No se pudo entrar: " + error.message, "error");
+  entrar(data.user);
+});
+$("logPass").addEventListener("keydown", e => { if (e.key === "Enter") $("btnLogin").click(); });
+
+$("btnRegistrar").addEventListener("click", async () => {
+  const email = $("logEmail").value.trim(), password = $("logPass").value;
+  if (!email || password.length < 6) return aviso("Escribe un correo válido y una contraseña de mínimo 6 caracteres.", "error");
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) return aviso("No se pudo crear la cuenta: " + error.message, "error");
+  if (data.session) { entrar(data.user); aviso("¡Cuenta creada! Ya estás dentro. Recuerda desactivar los registros nuevos en Supabase. 💖"); }
+  else aviso("Cuenta creada. Revisa tu correo para confirmarla y luego inicia sesión aquí.");
+});
+
+async function entrar(user) {
+  vista("vistaPanel");
+  $("mailActual").textContent = user.email;
+  await Promise.all([cargarConfig(), cargarFotos()]);
+}
+$("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); vista("vistaLogin"); });
+
+/* ---------- CONFIG ---------- */
+async function cargarConfig() {
+  const { data } = await sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle();
+  const d = (data && data.data) || {};
+  $("fNombre").value = d.nombre || "JENIFFER";
+  $("fTitulo").value = d.tituloIntro || "Para Ti, Jeniffer 💖";
+  $("fSubtitulo").value = d.subtituloIntro || "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.";
+  $("fMensaje").value = d.mensajeCentral || "TE AMO ❤️";
+  $("fCarta").value = d.carta || "";
+  $("fFirma").value = d.firma || "— Con todo mi corazón, tuyo por siempre 💍";
+  $("fFrases").value = (d.frases || []).join("\n");
+  $("fFrasesKitty").value = (d.frasesKitty || []).join("\n");
+  $("fMusica").checked = !!d.musicaActiva;
+  $("fMusicaUrl").value = d.musicaUrl || "";
+}
+
+$("btnGuardar").addEventListener("click", async () => {
+  const btn = $("btnGuardar"); btn.disabled = true;
+  const lineas = t => t.split("\n").map(s => s.trim()).filter(Boolean);
+  const data = {
+    nombre: $("fNombre").value.trim(),
+    tituloIntro: $("fTitulo").value.trim(),
+    subtituloIntro: $("fSubtitulo").value,
+    mensajeCentral: $("fMensaje").value.trim(),
+    carta: $("fCarta").value,
+    firma: $("fFirma").value.trim(),
+    musicaActiva: $("fMusica").checked,
+    musicaUrl: $("fMusicaUrl").value.trim()
+  };
+  const frases = lineas($("fFrases").value);
+  const frasesKitty = lineas($("fFrasesKitty").value);
+  if (frases.length) data.frases = frases;
+  if (frasesKitty.length) data.frasesKitty = frasesKitty;
+  const { error } = await sb.from("galaxia_config").upsert({ id: 1, data });
+  btn.disabled = false;
+  if (error) return aviso("Error al guardar: " + error.message, "error");
+  aviso("¡Guardado! Los cambios ya están en vivo. 💖");
+});
+
+/* ---------- FOTOS ---------- */
+const zona = $("zonaDrop"), inputFotos = $("inputFotos"), grid = $("gridFotos"), barra = $("barraSubida");
+
+zona.addEventListener("click", () => inputFotos.click());
+zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("encima"); });
+zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
+zona.addEventListener("drop", e => { e.preventDefault(); zona.classList.remove("encima"); subir(e.dataTransfer.files); });
+inputFotos.addEventListener("change", () => subir(inputFotos.files));
+
+async function subir(files) {
+  const lista = [...files].filter(f => f.type.startsWith("image/"));
+  if (!lista.length) return;
+  barra.classList.remove("oculto"); barra.value = 0;
+  let ok = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const f = lista[i];
+    const nombre = Date.now() + "-" + i + "-" + f.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+    const { error } = await sb.storage.from("fotos").upload(nombre, f, { cacheControl: "3600" });
+    if (!error) ok++;
+    barra.value = Math.round(((i + 1) / lista.length) * 100);
+  }
+  barra.classList.add("oculto");
+  inputFotos.value = "";
+  aviso(ok + " foto(s) subida(s) 📸 ¡Ya giran en la galaxia!");
+  cargarFotos();
+}
+
+async function cargarFotos() {
+  const { data, error } = await sb.storage.from("fotos").list("", { limit: 300, sortBy: { column: "created_at", order: "desc" } });
+  if (error) return aviso("No se pudieron cargar las fotos: " + error.message, "error");
+  grid.innerHTML = "";
+  const archivos = (data || []).filter(f => f.name && !f.name.startsWith("."));
+  archivos.forEach(f => {
+    const url = sb.storage.from("fotos").getPublicUrl(f.name).data.publicUrl;
+    const div = document.createElement("div");
+    div.className = "foto";
+    div.innerHTML = `<img src="${url}" loading="lazy" alt=""><button title="Borrar">🗑</button>`;
+    div.querySelector("button").addEventListener("click", async () => {
+      if (!confirm("¿Borrar esta foto de la galaxia?")) return;
+      const { error } = await sb.storage.from("fotos").remove([f.name]);
+      if (error) return aviso("No se pudo borrar: " + error.message, "error");
+      cargarFotos();
+    });
+    grid.appendChild(div);
+  });
+  $("contadorFotos").textContent = archivos.length ? archivos.length + " foto(s) en la galaxia" : "Aún no hay fotos — sube las primeras ✨";
+}
+
+/* ---------- CUENTA ---------- */
+$("btnCambiarMail").addEventListener("click", async () => {
+  const email = $("nuevoMail").value.trim();
+  if (!email) return aviso("Escribe el nuevo correo.", "error");
+  const { error } = await sb.auth.updateUser({ email });
+  if (error) return aviso("Error: " + error.message, "error");
+  aviso("Revisa tu correo (el nuevo y el viejo) para confirmar el cambio. 📧");
+});
+$("btnCambiarPass").addEventListener("click", async () => {
+  const password = $("nuevaPass").value;
+  if (password.length < 6) return aviso("La contraseña debe tener mínimo 6 caracteres.", "error");
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) return aviso("Error: " + error.message, "error");
+  $("nuevaPass").value = "";
+  aviso("¡Contraseña cambiada! 🔒");
+});
+</script>
+</body>
+</html>
