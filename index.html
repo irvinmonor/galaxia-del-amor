@@ -61,16 +61,8 @@ body.restaurando #hint{transition:none!important}
   transition:opacity .6s ease, visibility .6s;
 }
 body.datos-listos #cargando{opacity:0;visibility:hidden}
-#cargando .lat{
-  width:54px;height:49px;position:relative;animation:latido 1.1s ease-in-out infinite;
-  filter:drop-shadow(0 0 14px rgba(255,46,154,.8));
-}
-#cargando .lat::before,#cargando .lat::after{
-  content:"";position:absolute;top:0;width:29px;height:46px;border-radius:29px 29px 0 0;
-  background:linear-gradient(135deg,#ff8fd0,#ff2e9a);
-}
-#cargando .lat::before{left:27px;transform:rotate(45deg);transform-origin:0 100%}
-#cargando .lat::after{left:0;transform:rotate(-45deg);transform-origin:100% 100%}
+.corazon-svg{display:block;filter:drop-shadow(0 0 14px rgba(255,46,154,.85))}
+#cargando .lat{width:62px;height:56px;animation:latido 1.1s ease-in-out infinite}
 /* fondo personalizado de la portada */
 #intro.con-fondo{background:var(--fondo-portada) center/cover no-repeat}
 #intro.con-fondo::before{
@@ -302,16 +294,10 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 }
 #modalSorpresa.abierta .caja-sorpresa{transform:scale(1)}
 .corazon-lindo{
-  width:64px;height:58px;position:relative;margin:0 auto 20px;
+  width:72px;height:65px;margin:0 auto 20px;
   animation:latido 1.2s ease-in-out infinite;
   filter:drop-shadow(0 0 16px rgba(255,46,154,.85)) drop-shadow(0 0 40px rgba(179,136,255,.5));
 }
-.corazon-lindo::before,.corazon-lindo::after{
-  content:"";position:absolute;top:0;width:34px;height:54px;border-radius:34px 34px 0 0;
-  background:linear-gradient(135deg,#ff8fd0,#ff2e9a);
-}
-.corazon-lindo::before{left:32px;transform:rotate(45deg);transform-origin:0 100%}
-.corazon-lindo::after{left:0;transform:rotate(-45deg);transform-origin:100% 100%}
 .caja-sorpresa p{color:#e8d7ff;font-size:16px;line-height:1.7;white-space:pre-wrap}
 #cerrarSorpresa{
   border:none;cursor:pointer;padding:11px 32px;border-radius:999px;font-size:15px;font-weight:700;color:#fff;
@@ -432,7 +418,16 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 </head>
 <body>
 
-<div id="cargando"><div class="lat"></div></div>
+<div id="cargando">
+  <svg class="corazon-svg lat" viewBox="0 0 32 29" aria-hidden="true">
+    <defs>
+      <linearGradient id="gradCorazon" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#ff2e9a"/>
+      </linearGradient>
+    </defs>
+    <path d="M16 28.2 C16 28.2 1.4 19.6 1.4 9.9 C1.4 4.9 5.2 1.2 9.7 1.2 C12.5 1.2 14.8 2.7 16 4.9 C17.2 2.7 19.5 1.2 22.3 1.2 C26.8 1.2 30.6 4.9 30.6 9.9 C30.6 19.6 16 28.2 16 28.2 Z" fill="url(#gradCorazon)"/>
+  </svg>
+</div>
 
 <!-- ======= PANTALLA DE ENTRADA ======= -->
 <div id="intro">
@@ -536,7 +531,14 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 <!-- ======= MODAL SORPRESA ======= -->
 <div id="modalSorpresa">
   <div class="caja-sorpresa">
-    <div class="corazon-lindo"></div>
+    <svg class="corazon-svg corazon-lindo" viewBox="0 0 32 29" aria-hidden="true">
+      <defs>
+        <linearGradient id="gradCorazon2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#ff2e9a"/>
+        </linearGradient>
+      </defs>
+      <path d="M16 28.2 C16 28.2 1.4 19.6 1.4 9.9 C1.4 4.9 5.2 1.2 9.7 1.2 C12.5 1.2 14.8 2.7 16 4.9 C17.2 2.7 19.5 1.2 22.3 1.2 C26.8 1.2 30.6 4.9 30.6 9.9 C30.6 19.6 16 28.2 16 28.2 Z" fill="url(#gradCorazon2)"/>
+    </svg>
     <p id="textoSorpresa"></p>
     <button id="cerrarSorpresa">Cerrar</button>
   </div>
