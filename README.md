@@ -13,6 +13,21 @@ Desde el panel puedes, sin tocar código:
 - Activar/desactivar la música y cambiar la canción
 - Cambiar tu correo y contraseña de admin
 
+## 🎬 Videos en Backblaze B2
+
+Los videos del modo Netflix se guardan en Backblaze B2 y se reproducen con **Vidstack**
+(tema Netflix). Requiere estas variables de entorno en Vercel → Settings → Environment Variables:
+
+| Variable | Dónde sacarla |
+|---|---|
+| `B2_KEY_ID` | Backblaze → Application Keys → keyID |
+| `B2_APP_KEY` | Backblaze → Application Keys → applicationKey |
+| `B2_BUCKET_ID` | Backblaze → Buckets → bucketId |
+| `B2_BUCKET_NAME` | nombre del bucket (debe ser **público**) |
+
+Las funciones en `api/` firman las subidas: solo responden con sesión de admin válida,
+así que la clave secreta nunca sale del servidor.
+
 ## ⚙️ Configuración inicial (una sola vez)
 
 1. Crea un proyecto gratis en [supabase.com](https://supabase.com)

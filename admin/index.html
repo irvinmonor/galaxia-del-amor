@@ -72,6 +72,13 @@ textarea{resize:vertical;min-height:90px}
 .vid button:hover{background:#e02451;color:#fff}
 .vid .nom{position:absolute;left:0;right:0;bottom:0;font-size:11px;color:#ddd;padding:10px 6px 4px;background:linear-gradient(transparent,rgba(0,0,0,.85));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #contadorVideos{font-size:13px;color:#9f86c9;margin-top:10px}
+#zonaDropFondo{
+  border:2px dashed var(--borde);border-radius:16px;padding:24px 20px;text-align:center;color:#c9a6ff;
+  cursor:pointer;transition:all .25s;font-size:14px;
+}
+#zonaDropFondo.encima{border-color:var(--rosa);background:rgba(255,46,154,.08)}
+#previewFondo{margin-top:14px}
+#previewFondo img{width:100%;max-height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--borde)}
 .badge-mail{font-size:13px;color:#9f86c9}
 progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
 </style>
@@ -99,15 +106,6 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     <input type="password" id="logPass" placeholder="••••••••" autocomplete="current-password">
     <div class="fila">
       <button class="btn" id="btnLogin">Entrar 💫</button>
-      <button class="btn sec" id="btnModoRegistro">Primera vez: crear cuenta</button>
-    </div>
-    <div id="zonaRegistro" class="oculto">
-      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin-top:16px">
-        Crea la cuenta del administrador con el correo y contraseña de arriba.
-        <b>Importante:</b> después de crearla, desactiva los registros nuevos en
-        Supabase → Authentication → Sign In / Up → "Allow new users to sign up".
-      </p>
-      <button class="btn" id="btnRegistrar">Crear mi cuenta de admin ✨</button>
     </div>
   </div>
 
@@ -137,11 +135,11 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       <div class="tarjeta">
         <h2>🎬 Videos del modo Netflix</h2>
         <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 10px">
-          Estos videos se ven al entrar por el cuadro de Netflix. El nombre del archivo se usa como título
-          (máx. ~50 MB por video en el plan gratis de Supabase).
+          Se guardan en <b>Backblaze B2</b> (sin límite de tamaño) y se ven con reproductor Vidstack estilo Netflix.
+          El nombre del archivo se usa como título. Formatos: mp4, webm, mov, mkv, avi, m3u8, mpd y más.
         </p>
-        <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4 recomendado, varios a la vez)</small></div>
-        <input type="file" id="inputVideos" accept="video/*" multiple class="oculto">
+        <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4, webm, mov, mkv… varios a la vez)</small></div>
+        <input type="file" id="inputVideos" accept="video/*,.mkv,.avi,.m3u8,.mpd,.ogv,.3gp,.flv,.wmv" multiple class="oculto">
         <progress id="barraVideo" max="100" value="0" class="oculto"></progress>
         <div id="gridVideosAdmin"></div>
         <div id="contadorVideos"></div>
@@ -157,6 +155,22 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       <progress id="barraSubida" max="100" value="0" class="oculto"></progress>
       <div id="gridFotos"></div>
       <div id="contadorFotos"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>🖼️ Fondo de la portada</h2>
+      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 8px">
+        Si lo dejas vacío se usa el tema oscuro morado. Sube una imagen o pega un link.
+      </p>
+      <div id="zonaDropFondo">Arrastra una imagen aquí o haz clic para elegirla</div>
+      <input type="file" id="inputFondo" accept="image/*" class="oculto">
+      <progress id="barraFondo" max="100" value="0" class="oculto"></progress>
+      <label>URL de la imagen de fondo</label>
+      <div class="fila">
+        <input type="url" id="fFondo" placeholder="https://… (vacío = tema oscuro)" style="flex:1;min-width:220px">
+        <button class="btn sec" id="btnQuitarFondo" style="margin:0">Quitar</button>
+      </div>
+      <div id="previewFondo"></div>
     </div>
 
     <div class="tarjeta">
@@ -250,24 +264,13 @@ if (!configurado) {
   });
 }
 
-/* ---------- LOGIN / REGISTRO ---------- */
-$("btnModoRegistro").addEventListener("click", () => $("zonaRegistro").classList.toggle("oculto"));
-
+/* ---------- LOGIN ---------- */
 $("btnLogin").addEventListener("click", async () => {
   const { data, error } = await sb.auth.signInWithPassword({ email: $("logEmail").value.trim(), password: $("logPass").value });
   if (error) return aviso("No se pudo entrar: " + error.message, "error");
   entrar(data.user);
 });
 $("logPass").addEventListener("keydown", e => { if (e.key === "Enter") $("btnLogin").click(); });
-
-$("btnRegistrar").addEventListener("click", async () => {
-  const email = $("logEmail").value.trim(), password = $("logPass").value;
-  if (!email || password.length < 6) return aviso("Escribe un correo válido y una contraseña de mínimo 6 caracteres.", "error");
-  const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) return aviso("No se pudo crear la cuenta: " + error.message, "error");
-  if (data.session) { entrar(data.user); aviso("¡Cuenta creada! Ya estás dentro. Recuerda desactivar los registros nuevos en Supabase. 💖"); }
-  else aviso("Cuenta creada. Revisa tu correo para confirmarla y luego inicia sesión aquí.");
-});
 
 async function entrar(user) {
   vista("vistaPanel");
@@ -302,6 +305,8 @@ async function cargarConfig() {
   $("fMusicaUrl").value = d.musicaUrl || "";
   $("fSorpresa").checked = !!d.sorpresaActiva;
   $("fSorpresaMsg").value = d.sorpresaMensaje || "Se desbloquea el 12 de agosto";
+  $("fFondo").value = d.fondoPortada || "";
+  pintarPreviewFondo();
 }
 
 $("btnGuardar").addEventListener("click", async () => {
@@ -317,7 +322,8 @@ $("btnGuardar").addEventListener("click", async () => {
     musicaActiva: $("fMusica").checked,
     musicaUrl: $("fMusicaUrl").value.trim(),
     sorpresaActiva: $("fSorpresa").checked,
-    sorpresaMensaje: $("fSorpresaMsg").value
+    sorpresaMensaje: $("fSorpresaMsg").value,
+    fondoPortada: $("fFondo").value.trim()
   };
   const frases = lineas($("fFrases").value);
   const frasesKitty = lineas($("fFrasesKitty").value);
@@ -386,17 +392,45 @@ zonaV.addEventListener("dragleave", () => zonaV.classList.remove("encima"));
 zonaV.addEventListener("drop", e => { e.preventDefault(); zonaV.classList.remove("encima"); subirVideos(e.dataTransfer.files); });
 inputVideos.addEventListener("change", () => subirVideos(inputVideos.files));
 
+async function tokenSesion() {
+  const { data } = await sb.auth.getSession();
+  return data.session ? data.session.access_token : "";
+}
+
+// Sube un archivo directo a Backblaze B2 con barra de progreso real
+async function subirAB2(file, carpeta, barra) {
+  const tok = await tokenSesion();
+  const r = await fetch("/api/subir", { headers: { Authorization: "Bearer " + tok } });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || "No se pudo autorizar la subida");
+  const limpio = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+  const ruta = carpeta + "/" + Date.now() + "-" + limpio;
+  const sha = await crypto.subtle.digest("SHA-1", await file.arrayBuffer())
+    .then(b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""));
+
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", j.uploadUrl);
+    xhr.setRequestHeader("Authorization", j.token);
+    xhr.setRequestHeader("X-Bz-File-Name", encodeURIComponent(ruta));
+    xhr.setRequestHeader("Content-Type", file.type || "b2/x-auto");
+    xhr.setRequestHeader("X-Bz-Content-Sha1", sha);
+    if (barra) xhr.upload.onprogress = e => { if (e.lengthComputable) barra.value = Math.round(e.loaded / e.total * 100); };
+    xhr.onload = () => (xhr.status === 200 ? resolve() : reject(new Error("B2 " + xhr.status + ": " + xhr.responseText)));
+    xhr.onerror = () => reject(new Error("Fallo de red al subir"));
+    xhr.send(file);
+  });
+  return j.base + ruta.split("/").map(encodeURIComponent).join("/");
+}
+
 async function subirVideos(files) {
-  const lista = [...files].filter(f => f.type.startsWith("video/"));
+  const lista = [...files].filter(f => f.type.startsWith("video/") || /\.(mkv|avi|m3u8|mpd|ogv|3gp|flv|wmv|mov|webm|mp4)$/i.test(f.name));
   if (!lista.length) return;
   barraV.classList.remove("oculto"); barraV.value = 0;
   let ok = 0, errores = [];
-  for (let i = 0; i < lista.length; i++) {
-    const f = lista[i];
-    const nombre = "videos/" + Date.now() + "-" + i + "-" + f.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
-    const { error } = await sb.storage.from("fotos").upload(nombre, f, { cacheControl: "3600" });
-    if (!error) ok++; else errores.push(f.name + ": " + error.message);
-    barraV.value = Math.round(((i + 1) / lista.length) * 100);
+  for (const f of lista) {
+    try { await subirAB2(f, "videos", barraV); ok++; }
+    catch (e) { errores.push(f.name + ": " + e.message); }
   }
   barraV.classList.add("oculto");
   inputVideos.value = "";
@@ -406,25 +440,62 @@ async function subirVideos(files) {
 }
 
 async function cargarVideos() {
-  const { data, error } = await sb.storage.from("fotos").list("videos", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
-  if (error) return aviso("No se pudieron cargar los videos: " + error.message, "error");
+  let j;
+  try { j = await (await fetch("/api/videos")).json(); }
+  catch (e) { return aviso("No se pudieron cargar los videos: " + e.message, "error"); }
+  if (j.error) return aviso("Backblaze: " + j.error, "error");
   gridV.innerHTML = "";
-  const archivos = (data || []).filter(f => f.id && f.name && !f.name.startsWith("."));
-  archivos.forEach(f => {
-    const url = sb.storage.from("fotos").getPublicUrl("videos/" + f.name).data.publicUrl;
-    const titulo = f.name.replace(/^\d+-\d+-/, "").replace(/\.[^.]+$/, "").replace(/-/g, " ");
+  const vids = j.videos || [];
+  vids.forEach(v => {
     const div = document.createElement("div");
     div.className = "vid";
-    div.innerHTML = `<video src="${url}#t=1" preload="metadata" muted playsinline></video><button title="Borrar">🗑</button><div class="nom">${titulo}</div>`;
+    div.innerHTML = `<video src="${v.url}#t=1" preload="metadata" muted playsinline></video><button title="Borrar">🗑</button><div class="nom">${v.nombre}</div>`;
     div.querySelector("button").addEventListener("click", async () => {
       if (!confirm("¿Borrar este video del modo Netflix?")) return;
-      const { error } = await sb.storage.from("fotos").remove(["videos/" + f.name]);
-      if (error) return aviso("No se pudo borrar: " + error.message, "error");
+      const tok = await tokenSesion();
+      const r = await fetch("/api/borrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+        body: JSON.stringify({ fileName: v.fileName, fileId: v.fileId })
+      });
+      const res = await r.json();
+      if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error");
       cargarVideos();
     });
     gridV.appendChild(div);
   });
-  $("contadorVideos").textContent = archivos.length ? archivos.length + " video(s) en el modo Netflix" : "Aún no hay videos — sube el primero 🎬";
+  $("contadorVideos").textContent = vids.length ? vids.length + " video(s) en el modo Netflix" : "Aún no hay videos — sube el primero 🎬";
+}
+
+/* ---------- FONDO DE PORTADA ---------- */
+const zonaF = $("zonaDropFondo"), inputFondo = $("inputFondo"), barraF = $("barraFondo");
+
+function pintarPreviewFondo() {
+  const u = $("fFondo").value.trim();
+  $("previewFondo").innerHTML = u ? `<img src="${u}" alt="">` : "";
+}
+$("fFondo").addEventListener("input", pintarPreviewFondo);
+$("btnQuitarFondo").addEventListener("click", () => { $("fFondo").value = ""; pintarPreviewFondo(); });
+
+zonaF.addEventListener("click", () => inputFondo.click());
+zonaF.addEventListener("dragover", e => { e.preventDefault(); zonaF.classList.add("encima"); });
+zonaF.addEventListener("dragleave", () => zonaF.classList.remove("encima"));
+zonaF.addEventListener("drop", e => { e.preventDefault(); zonaF.classList.remove("encima"); subirFondo(e.dataTransfer.files[0]); });
+inputFondo.addEventListener("change", () => subirFondo(inputFondo.files[0]));
+
+async function subirFondo(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  barraF.classList.remove("oculto"); barraF.value = 0;
+  try {
+    const url = await subirAB2(file, "fondos", barraF);
+    $("fFondo").value = url;
+    pintarPreviewFondo();
+    aviso("Fondo subido 🖼️ — no olvides darle a Guardar.");
+  } catch (e) {
+    aviso("No se pudo subir el fondo: " + e.message, "error");
+  }
+  barraF.classList.add("oculto");
+  inputFondo.value = "";
 }
 
 /* ---------- CUENTA ---------- */

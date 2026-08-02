@@ -22,6 +22,31 @@ canvas#c{display:block;position:fixed;inset:0}
   transition:opacity 1.2s ease, visibility 1.2s;
 }
 #intro.oculto{opacity:0;visibility:hidden;pointer-events:none}
+/* hasta que cargan los datos, el contenido está invisible: evita ver los textos por defecto */
+#intro > *{opacity:0;transition:opacity .5s ease}
+body.datos-listos #intro > *{opacity:1}
+#cargando{
+  position:fixed;inset:0;z-index:5200;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%, #2a0a4a 0%, #12002b 55%, #05000f 100%);
+  transition:opacity .6s ease, visibility .6s;
+}
+body.datos-listos #cargando{opacity:0;visibility:hidden}
+#cargando .lat{
+  width:54px;height:49px;position:relative;animation:latido 1.1s ease-in-out infinite;
+  filter:drop-shadow(0 0 14px rgba(255,46,154,.8));
+}
+#cargando .lat::before,#cargando .lat::after{
+  content:"";position:absolute;top:0;width:29px;height:46px;border-radius:29px 29px 0 0;
+  background:linear-gradient(135deg,#ff8fd0,#ff2e9a);
+}
+#cargando .lat::before{left:27px;transform:rotate(45deg);transform-origin:0 100%}
+#cargando .lat::after{left:0;transform:rotate(-45deg);transform-origin:100% 100%}
+/* fondo personalizado de la portada */
+#intro.con-fondo{background:var(--fondo-portada) center/cover no-repeat}
+#intro.con-fondo::before{
+  content:"";position:absolute;inset:0;background:rgba(8,0,20,.62);backdrop-filter:blur(1px);
+}
+#intro.con-fondo > *{position:relative;z-index:1}
 #intro .kitty-intro{width:130px;height:130px;animation:flotar 3s ease-in-out infinite}
 #intro h1{
   margin:0;font-size:clamp(28px,7vw,54px);font-weight:800;letter-spacing:1px;
@@ -111,12 +136,22 @@ canvas#c{display:block;position:fixed;inset:0}
   position:fixed;inset:0;z-index:6500;background:#000;display:none;align-items:center;justify-content:center;
 }
 #playerVideo.abierto{display:flex}
-#playerVideo video{max-width:100%;max-height:100%;width:100%;height:auto;outline:none}
+#vsPlayer{width:100%;max-height:100vh;--media-brand:#e50914;--media-focus-ring-color:#e50914}
+media-player{ --video-brand:#e50914 }
+/* tema Netflix para los controles de Vidstack */
+.vds-slider-track-fill,.vds-time-slider .vds-slider-track-fill{background:#e50914!important}
+.vds-slider-thumb{background:#e50914!important;border-color:#e50914!important}
+.vds-button:hover{color:#e50914!important}
+.vds-menu-item[aria-checked=true]{color:#e50914!important}
 #cerrarVideo{
-  position:absolute;top:14px;right:16px;z-index:2;border:none;background:rgba(255,255,255,.12);color:#fff;
-  width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;
+  position:absolute;top:14px;right:16px;z-index:20;border:none;background:rgba(255,255,255,.12);color:#fff;
+  width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;transition:background .2s;
 }
 #cerrarVideo:hover{background:#e50914}
+#tituloReproduciendo{
+  position:absolute;top:20px;left:24px;z-index:19;color:#fff;font-size:19px;font-weight:600;
+  text-shadow:0 2px 12px rgba(0,0,0,.9);pointer-events:none;max-width:60%;
+}
 
 /* ---------- ANIMACIÓN N ---------- */
 #nOverlay{
@@ -278,6 +313,8 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 </head>
 <body>
 
+<div id="cargando"><div class="lat"></div></div>
+
 <!-- ======= PANTALLA DE ENTRADA ======= -->
 <div id="intro">
   <div class="kitty-intro" id="kittyIntro"></div>
@@ -319,7 +356,11 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 </div>
 <div id="playerVideo">
   <button id="cerrarVideo">✕</button>
-  <video id="videoTag" controls playsinline></video>
+  <div id="tituloReproduciendo"></div>
+  <media-player id="vsPlayer" playsinline autoplay>
+    <media-provider></media-provider>
+    <media-video-layout></media-video-layout>
+  </media-player>
 </div>
 
 <!-- ======= ANIMACIÓN N (estilo intro de Netflix) ======= -->
@@ -371,6 +412,9 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 
 <audio id="audio" loop></audio>
 
+<link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css">
+<link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css">
+<script src="https://cdn.vidstack.io/player" type="module"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
@@ -382,6 +426,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 const DEFAULTS = {
   sorpresaActiva: false,
   sorpresaMensaje: "Se desbloquea el 12 de agosto",
+  fondoPortada: "",   // URL de imagen de fondo para la portada (vacío = tema oscuro)
   musicaActiva: false,
   musicaUrl: "https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1",
   nombre: "JENIFFER",
@@ -433,10 +478,9 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
     const cred = window.GALAXIA_SUPABASE;
     if (cred && cred.url && cred.url.indexOf("https") === 0 && window.supabase) {
       const sb = window.supabase.createClient(cred.url, cred.anonKey);
-      const [cfgRes, fotosRes, videosRes, sesRes] = await Promise.all([
+      const [cfgRes, fotosRes, sesRes] = await Promise.all([
         sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle(),
         sb.storage.from("fotos").list("", { limit: 300, sortBy: { column: "created_at", order: "asc" } }),
-        sb.storage.from("fotos").list("videos", { limit: 100, sortBy: { column: "created_at", order: "desc" } }),
         sb.auth.getSession()
       ]);
       ES_ADMIN = !!(sesRes.data && sesRes.data.session);
@@ -448,17 +492,15 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
           .filter(f => f.id && f.name && !f.name.startsWith("."))
           .map(f => sb.storage.from("fotos").getPublicUrl(f.name).data.publicUrl);
       }
-      if (videosRes.data) {
-        VIDEOS = videosRes.data
-          .filter(f => f.id && f.name && !f.name.startsWith("."))
-          .map(f => ({
-            nombre: f.name.replace(/^\d+-\d+-/, "").replace(/\.[^.]+$/, "").replace(/-/g, " "),
-            url: sb.storage.from("fotos").getPublicUrl("videos/" + f.name).data.publicUrl
-          }));
-      }
     }
   } catch (e) {
     console.warn("Supabase no disponible, usando valores locales:", e);
+  }
+  try {
+    const r = await fetch("/api/videos");
+    if (r.ok) { const j = await r.json(); VIDEOS = j.videos || []; }
+  } catch (e) {
+    console.warn("No se pudieron cargar los videos:", e);
   }
   iniciar();
 })();
@@ -517,10 +559,24 @@ function ráfagaCorazones(x, y, n = 8) {
    ============================================================ */
 function iniciar() {
 
-/* --- textos de la intro --- */
+/* --- textos y fondo de la intro --- */
 document.getElementById("kittyIntro").innerHTML = kittySVG();
 document.getElementById("tituloIntro").textContent = CONFIG.tituloIntro;
 document.getElementById("subtituloIntro").innerText = CONFIG.subtituloIntro;
+
+const intro = document.getElementById("intro");
+if (CONFIG.fondoPortada) {
+  const img = new Image();
+  img.onload = () => {
+    intro.style.setProperty("--fondo-portada", `url("${CONFIG.fondoPortada}")`);
+    intro.classList.add("con-fondo");
+    document.body.classList.add("datos-listos");
+  };
+  img.onerror = () => document.body.classList.add("datos-listos");
+  img.src = CONFIG.fondoPortada;
+} else {
+  document.body.classList.add("datos-listos");
+}
 
 /* --- audio --- */
 const audio = document.getElementById("audio");
@@ -564,7 +620,7 @@ function sonidoTudum() {
 const netflixUI = document.getElementById("netflixUI");
 const gridVideos = document.getElementById("gridVideos");
 const playerVideo = document.getElementById("playerVideo");
-const videoTag = document.getElementById("videoTag");
+const vsPlayer = document.getElementById("vsPlayer");
 
 function pintarVideos() {
   gridVideos.innerHTML = "";
@@ -578,17 +634,21 @@ function pintarVideos() {
       <div class="play-ico">▶</div>
       <div class="nombre-video">${v.nombre}</div>`;
     card.addEventListener("click", () => {
-      videoTag.src = v.url;
+      document.getElementById("tituloReproduciendo").textContent = v.nombre;
+      vsPlayer.setAttribute("title", v.nombre);
+      vsPlayer.src = v.url;
       playerVideo.classList.add("abierto");
-      videoTag.play().catch(() => {});
     });
     gridVideos.appendChild(card);
   });
 }
-document.getElementById("cerrarVideo").addEventListener("click", () => {
-  videoTag.pause(); videoTag.removeAttribute("src"); videoTag.load();
+function cerrarReproductor() {
+  try { vsPlayer.pause(); } catch(e) {}
+  vsPlayer.src = "";
   playerVideo.classList.remove("abierto");
-});
+}
+document.getElementById("cerrarVideo").addEventListener("click", cerrarReproductor);
+addEventListener("keydown", e => { if (e.key === "Escape" && playerVideo.classList.contains("abierto")) cerrarReproductor(); });
 document.getElementById("btnVolverFlix").addEventListener("click", () => {
   netflixUI.classList.remove("abierta");
   document.getElementById("intro").classList.remove("oculto");
