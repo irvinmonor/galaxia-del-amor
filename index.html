@@ -885,7 +885,7 @@ function cargarScript(url) {
 }
 
 async function abrirVideo(v) {
-  document.getElementById("tituloReproduciendo").textContent = v.nombre;
+  document.getElementById("tituloReproduciendo").textContent = v.titulo || v.nombre;
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
   videoActual = v.fileName || v.url;

@@ -905,7 +905,7 @@ function pintarVids() {
       await guardarOrden(m.terminada ? "Marcada como pendiente 🍿" : "¡Marcada como terminada! ✔");
     });
     fila.querySelector('[data-a=borrar]').addEventListener("click", async () => {
-      if (!confirm("¿Borrar «" + v.nombre + "» del modo Netflix?")) return;
+      if (!confirm("¿Borrar «" + (m.titulo || v.nombre) + "» del modo Netflix?")) return;
       const tok = await tokenSesion();
       const r = await fetch("/api/borrar", {
         method: "POST",
