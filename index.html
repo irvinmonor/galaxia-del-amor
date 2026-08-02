@@ -46,6 +46,9 @@ canvas#c{display:block;position:fixed;inset:0}
 /* hasta que cargan los datos, el contenido está invisible: evita ver los textos por defecto */
 #intro > *{opacity:0;transition:opacity .5s ease}
 body.datos-listos #intro > *{opacity:1}
+/* al restaurar la pantalla no debe haber ninguna animación de por medio */
+body.restaurando #intro,body.restaurando #intro > *,body.restaurando #cargando,
+body.restaurando #netflixUI{transition:none!important}
 #cargando{
   position:fixed;inset:0;z-index:5200;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(ellipse at 50% 40%, #2a0a4a 0%, #12002b 55%, #05000f 100%);
@@ -728,18 +731,20 @@ document.getElementById("tituloIntro").textContent = CONFIG.tituloIntro;
 document.getElementById("subtituloIntro").innerText = CONFIG.subtituloIntro;
 
 const intro = document.getElementById("intro");
-if (CONFIG.fondoPortada) {
-  const img = new Image();
-  img.onload = () => {
-    intro.style.setProperty("--fondo-portada", `url("${CONFIG.fondoPortada}")`);
-    intro.classList.add("con-fondo");
-    document.body.classList.add("datos-listos");
-  };
-  img.onerror = () => document.body.classList.add("datos-listos");
-  img.src = CONFIG.fondoPortada;
-} else {
-  document.body.classList.add("datos-listos");
-}
+// el fondo se prepara aquí, pero la pantalla NO se revela todavía:
+// primero hay que saber a dónde volver, si no se alcanza a ver el inicio
+const fondoListo = CONFIG.fondoPortada
+  ? new Promise(listo => {
+      const img = new Image();
+      img.onload = () => {
+        intro.style.setProperty("--fondo-portada", `url("${CONFIG.fondoPortada}")`);
+        intro.classList.add("con-fondo");
+        listo();
+      };
+      img.onerror = listo;
+      img.src = CONFIG.fondoPortada;
+    })
+  : Promise.resolve();
 
 /* --- audio --- */
 const audio = document.getElementById("audio");
@@ -1082,13 +1087,20 @@ tileSorpresa.addEventListener("click", () => {
 document.getElementById("cerrarSorpresa").addEventListener("click", () => modalSorpresa.classList.remove("abierta"));
 modalSorpresa.addEventListener("click", e => { if (e.target === modalSorpresa) modalSorpresa.classList.remove("abierta"); });
 
-/* al recargar, volver a donde estaban (sin la animación de la J otra vez) */
-(function restaurarPantalla() {
+/* Al recargar, volver a donde estaban. Se hace ANTES de revelar la pantalla
+   (y sin transiciones) para que no se alcance a ver el inicio. */
+fondoListo.then(() => {
+  document.body.classList.add("restaurando");   // congela las transiciones
   const p = pantallaGuardada();
   if (p === "jeniflix") entrarJeniflix(false);
   else if (p === "galaxia" && desbloqueada) entrarGalaxia();
   else if (p === "galaxia") recordarPantalla("inicio");   // ya no tiene acceso
-})();
+
+  // se revela en el mismo fotograma: como las transiciones están congeladas,
+  // el navegador pinta directo el estado final y no se ve el inicio
+  document.body.classList.add("datos-listos");
+  setTimeout(() => document.body.classList.remove("restaurando"), 80);
+});
 
 /* --- reproductor --- */
 const playBtn = document.getElementById("play"),
