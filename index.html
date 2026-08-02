@@ -129,7 +129,10 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 .logo-flix{
   font-size:26px;font-weight:900;letter-spacing:3px;color:#e50914;
   text-shadow:0 0 18px rgba(229,9,20,.55);font-family:'Arial Black',Arial,sans-serif;
+  cursor:pointer;user-select:none;transition:transform .2s,text-shadow .2s;
 }
+.logo-flix:hover{transform:scale(1.06);text-shadow:0 0 26px rgba(229,9,20,.9)}
+.logo-flix:active{transform:scale(.98)}
 #btnVolverFlix{
   border:1px solid #444;background:rgba(255,255,255,.06);color:#ddd;padding:9px 18px;border-radius:999px;
   font-size:14px;cursor:pointer;transition:all .2s;
@@ -1048,11 +1051,13 @@ addEventListener("keydown", e => {
   else if (t === "m") btnVol.click();
   moverRaton();
 });
-document.getElementById("btnVolverFlix").addEventListener("click", () => {
+function volverAlInicio() {
   netflixUI.classList.remove("abierta");
   document.getElementById("intro").classList.remove("oculto");
   recordarPantalla("inicio");
-});
+}
+document.getElementById("btnVolverFlix").addEventListener("click", volverAlInicio);
+document.getElementById("logoFlix").addEventListener("click", volverAlInicio);
 
 /* --- cuadro Netflix: tudum + animación de la N --- */
 function entrarJeniflix(conAnimacion) {
