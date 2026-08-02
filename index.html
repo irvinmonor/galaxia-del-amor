@@ -151,6 +151,10 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
   background:linear-gradient(transparent,rgba(0,0,0,.85));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 #sinVideos{color:#888;font-size:15px;text-align:center;margin-top:60px;display:none}
+.card-video .visto{
+  display:none;position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.3);
+}
+.card-video .visto span{display:block;height:100%;width:0%;background:#e50914}
 
 /* ---------- REPRODUCTOR DE VIDEO ---------- */
 #playerVideo{
@@ -199,6 +203,16 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
   animation:girarAro .8s linear infinite;
 }
 @keyframes girarAro{to{transform:rotate(360deg)}}
+
+/* aviso de "continuando desde…" */
+#avisoReanuda{
+  position:absolute;z-index:21;left:50%;bottom:110px;transform:translate(-50%,12px);
+  background:rgba(0,0,0,.82);border:1px solid rgba(229,9,20,.7);color:#fff;
+  padding:10px 20px;border-radius:999px;font-size:14px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .35s,transform .35s;
+  box-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+#avisoReanuda.visible{opacity:1;transform:translate(-50%,0)}
 
 /* controles inferiores */
 #controles{
@@ -448,6 +462,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
   <video id="vid" playsinline preload="metadata"></video>
 
   <div id="cargandoVid"><div class="aro"></div></div>
+  <div id="avisoReanuda"></div>
 
   <div id="capaSuperior">
     <button id="cerrarVideo" title="Cerrar (Esc)">✕</button>
@@ -754,7 +769,18 @@ function pintarVideos() {
     card.innerHTML = `
       <video src="${v.url}#t=1" preload="metadata" muted playsinline></video>
       <div class="play-ico">▶</div>
-      <div class="nombre-video">${v.nombre}</div>`;
+      <div class="nombre-video">${v.nombre}</div>
+      <div class="visto"><span></span></div>`;
+    const vistoSeg = leerVistos()[v.fileName || v.url];
+    if (vistoSeg) {
+      const tmp = card.querySelector("video");
+      tmp.addEventListener("loadedmetadata", () => {
+        if (!tmp.duration) return;
+        const barra = card.querySelector(".visto");
+        barra.style.display = "block";
+        barra.firstElementChild.style.width = Math.min(100, vistoSeg / tmp.duration * 100) + "%";
+      });
+    }
     card.addEventListener("click", () => abrirVideo(v));
     gridVideos.appendChild(card);
   });
@@ -783,6 +809,23 @@ function reloj(s) {
   return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(g).padStart(2, "0");
 }
 
+/* --- memoria de dónde se quedó cada video --- */
+const CLAVE_VISTOS = "jeniflix_vistos";
+let videoActual = null;
+
+function leerVistos() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_VISTOS) || "{}"); }
+  catch (e) { return {}; }
+}
+function guardarPosicion() {
+  if (!videoActual || !isFinite(vid.duration) || vid.duration < 30) return;
+  const vistos = leerVistos();
+  // si ya casi termina, se olvida para que la próxima empiece de cero
+  if (vid.currentTime > vid.duration - 15 || vid.currentTime < 5) delete vistos[videoActual];
+  else vistos[videoActual] = Math.floor(vid.currentTime);
+  try { localStorage.setItem(CLAVE_VISTOS, JSON.stringify(vistos)); } catch (e) {}
+}
+
 let hls = null;
 function cargarScript(url) {
   return new Promise((ok, mal) => {
@@ -796,6 +839,8 @@ async function abrirVideo(v) {
   document.getElementById("tituloReproduciendo").textContent = v.nombre;
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
+  videoActual = v.fileName || v.url;
+  const desde = leerVistos()[videoActual] || 0;
 
   if (hls) { hls.destroy(); hls = null; }
   const esHls = /\.m3u8(\?|$)/i.test(v.url);
@@ -813,11 +858,31 @@ async function abrirVideo(v) {
     vid.load();
   }
 
+  // retomar donde se quedó
+  if (desde > 0) {
+    const saltar = () => {
+      vid.currentTime = desde;
+      avisoReanudar("Continuando desde " + reloj(desde) + " ⏵");
+      vid.removeEventListener("loadedmetadata", saltar);
+    };
+    vid.addEventListener("loadedmetadata", saltar);
+  }
+
   vid.play().catch(() => {});   // si el navegador bloquea, queda el botón gigante
   moverRaton();
 }
 
+function avisoReanudar(texto) {
+  const t = document.getElementById("avisoReanuda");
+  t.textContent = texto;
+  t.classList.add("visible");
+  clearTimeout(avisoReanudar._t);
+  avisoReanudar._t = setTimeout(() => t.classList.remove("visible"), 3500);
+}
+
 function cerrarReproductor() {
+  guardarPosicion();
+  videoActual = null;
   vid.pause();
   if (hls) { hls.destroy(); hls = null; }
   vid.removeAttribute("src");
@@ -834,7 +899,14 @@ vid.addEventListener("waiting", () => playerVideo.classList.add("cargando"));
 vid.addEventListener("playing", () => playerVideo.classList.remove("cargando"));
 vid.addEventListener("canplay", () => playerVideo.classList.remove("cargando"));
 vid.addEventListener("loadedmetadata", () => { playerVideo.classList.remove("cargando"); pintarTiempo(); });
-vid.addEventListener("timeupdate", pintarTiempo);
+vid.addEventListener("timeupdate", () => {
+  pintarTiempo();
+  // guardar cada ~5 segundos por si cierra la pestaña de golpe
+  if (videoActual && Math.floor(vid.currentTime) % 5 === 0) guardarPosicion();
+});
+vid.addEventListener("pause", guardarPosicion);
+addEventListener("beforeunload", guardarPosicion);
+addEventListener("visibilitychange", () => { if (document.hidden) guardarPosicion(); });
 vid.addEventListener("progress", () => {
   if (vid.buffered.length && vid.duration) {
     bufferTiempo.style.width = (vid.buffered.end(vid.buffered.length - 1) / vid.duration * 100) + "%";
@@ -943,11 +1015,7 @@ document.getElementById("tileNetflix").addEventListener("click", () => {
 /* --- cuadro sorpresa 🔒: la galaxia, bloqueada hasta el 12 --- */
 const tileSorpresa = document.getElementById("tileSorpresa");
 const desbloqueada = CONFIG.sorpresaActiva || ES_ADMIN;
-if (desbloqueada) {
-  tileSorpresa.querySelector(".candado").textContent = "💖";
-  tileSorpresa.querySelector("span").textContent = ES_ADMIN && !CONFIG.sorpresaActiva
-    ? "🌌 Nuestra Galaxia (solo tú)" : "🌌 Nuestra Galaxia";
-}
+if (desbloqueada) tileSorpresa.querySelector(".candado").textContent = "💖";
 const modalSorpresa = document.getElementById("modalSorpresa");
 tileSorpresa.addEventListener("click", () => {
   if (desbloqueada) {
