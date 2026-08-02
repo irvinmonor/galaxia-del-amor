@@ -55,6 +55,23 @@ textarea{resize:vertical;min-height:90px}
 .toggle input{width:20px;height:20px;accent-color:var(--rosa2)}
 .enlace{color:var(--rosa);text-decoration:none;font-size:14px}
 .pie{color:#6d5590;font-size:12px;text-align:center;margin:26px 0 8px}
+.tabbtn{margin-top:0;opacity:.55;background:transparent;border:1px solid var(--borde);box-shadow:none}
+.tabbtn.activo{opacity:1;background:linear-gradient(135deg,var(--rosa2),var(--lila));border:none;box-shadow:0 0 18px rgba(255,46,154,.5)}
+#zonaDropVideo{
+  border:2px dashed rgba(229,9,20,.5);border-radius:16px;padding:34px 20px;text-align:center;color:#e8a8ae;
+  cursor:pointer;transition:all .25s;font-size:15px;
+}
+#zonaDropVideo.encima{border-color:#e50914;background:rgba(229,9,20,.08)}
+#gridVideosAdmin{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:16px}
+.vid{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;border:1px solid rgba(229,9,20,.4);background:#000}
+.vid video{width:100%;height:100%;object-fit:cover;display:block}
+.vid button{
+  position:absolute;top:6px;right:6px;border:none;background:rgba(0,0,0,.65);color:#ff9aae;width:28px;height:28px;
+  border-radius:50%;cursor:pointer;font-size:13px;
+}
+.vid button:hover{background:#e02451;color:#fff}
+.vid .nom{position:absolute;left:0;right:0;bottom:0;font-size:11px;color:#ddd;padding:10px 6px 4px;background:linear-gradient(transparent,rgba(0,0,0,.85));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#contadorVideos{font-size:13px;color:#9f86c9;margin-top:10px}
 .badge-mail{font-size:13px;color:#9f86c9}
 progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
 </style>
@@ -108,6 +125,32 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     </div>
 
     <div class="tarjeta">
+      <h2>✏️ ¿Qué quieres editar?</h2>
+      <div class="fila">
+        <button class="btn tabbtn activo" id="tabNetflix">🎬 Netflix (videos)</button>
+        <button class="btn tabbtn" id="tabGalaxia">🌌 Galaxia (sorpresa del 12)</button>
+      </div>
+    </div>
+
+    <!-- ============ SECCIÓN NETFLIX ============ -->
+    <div id="secNetflix">
+      <div class="tarjeta">
+        <h2>🎬 Videos del modo Netflix</h2>
+        <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 10px">
+          Estos videos se ven al entrar por el cuadro de Netflix. El nombre del archivo se usa como título
+          (máx. ~50 MB por video en el plan gratis de Supabase).
+        </p>
+        <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4 recomendado, varios a la vez)</small></div>
+        <input type="file" id="inputVideos" accept="video/*" multiple class="oculto">
+        <progress id="barraVideo" max="100" value="0" class="oculto"></progress>
+        <div id="gridVideosAdmin"></div>
+        <div id="contadorVideos"></div>
+      </div>
+    </div>
+
+    <!-- ============ SECCIÓN GALAXIA ============ -->
+    <div id="secGalaxia" class="oculto">
+    <div class="tarjeta">
       <h2>📸 Fotos de la galaxia</h2>
       <div id="zonaDrop">Arrastra tus fotos aquí o haz clic para elegirlas<br><small>(puedes subir varias a la vez)</small></div>
       <input type="file" id="inputFotos" accept="image/*" multiple class="oculto">
@@ -137,13 +180,14 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     </div>
 
     <div class="tarjeta">
-      <h2>🎁 Cuadro sorpresa (?)</h2>
+      <h2>🔒 Desbloquear la galaxia (día 12)</h2>
       <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 6px">
-        Mientras esté desactivado, el cuadro "?" solo lo ves tú (con sesión iniciada en este navegador).
-        Actívalo el día 12 para que ella lo vea. 😉
+        Mientras esté desactivado, el cuadro con candado está bloqueado para los invitados
+        (solo tú puedes entrar a la galaxia, con sesión iniciada en este navegador).
+        El 12 de agosto activa el switch y la sorpresa se abre para ella. 😉
       </p>
-      <label class="toggle"><input type="checkbox" id="fSorpresa"> Mostrar el cuadro sorpresa a todos</label>
-      <label>Mensaje al abrir la sorpresa</label>
+      <label class="toggle"><input type="checkbox" id="fSorpresa"> Desbloquear la galaxia para todos</label>
+      <label>Mensaje del candado (lo que ve si intenta abrir antes de tiempo)</label>
       <textarea id="fSorpresaMsg" style="min-height:80px"></textarea>
     </div>
 
@@ -155,6 +199,7 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     </div>
 
     <button class="btn" id="btnGuardar" style="width:100%;font-size:17px">💾 Guardar todos los cambios</button>
+    </div><!-- fin secGalaxia -->
 
     <div class="tarjeta" style="margin-top:18px">
       <h2>👤 Mi cuenta</h2>
@@ -227,8 +272,18 @@ $("btnRegistrar").addEventListener("click", async () => {
 async function entrar(user) {
   vista("vistaPanel");
   $("mailActual").textContent = user.email;
-  await Promise.all([cargarConfig(), cargarFotos()]);
+  await Promise.all([cargarConfig(), cargarFotos(), cargarVideos()]);
 }
+
+/* ---------- PESTAÑAS ---------- */
+function seccion(cual) {
+  $("secNetflix").classList.toggle("oculto", cual !== "netflix");
+  $("secGalaxia").classList.toggle("oculto", cual !== "galaxia");
+  $("tabNetflix").classList.toggle("activo", cual === "netflix");
+  $("tabGalaxia").classList.toggle("activo", cual === "galaxia");
+}
+$("tabNetflix").addEventListener("click", () => seccion("netflix"));
+$("tabGalaxia").addEventListener("click", () => seccion("galaxia"));
 $("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); vista("vistaLogin"); });
 
 /* ---------- CONFIG ---------- */
@@ -305,7 +360,7 @@ async function cargarFotos() {
   const { data, error } = await sb.storage.from("fotos").list("", { limit: 300, sortBy: { column: "created_at", order: "desc" } });
   if (error) return aviso("No se pudieron cargar las fotos: " + error.message, "error");
   grid.innerHTML = "";
-  const archivos = (data || []).filter(f => f.name && !f.name.startsWith("."));
+  const archivos = (data || []).filter(f => f.id && f.name && !f.name.startsWith("."));
   archivos.forEach(f => {
     const url = sb.storage.from("fotos").getPublicUrl(f.name).data.publicUrl;
     const div = document.createElement("div");
@@ -320,6 +375,56 @@ async function cargarFotos() {
     grid.appendChild(div);
   });
   $("contadorFotos").textContent = archivos.length ? archivos.length + " foto(s) en la galaxia" : "Aún no hay fotos — sube las primeras ✨";
+}
+
+/* ---------- VIDEOS (modo Netflix) ---------- */
+const zonaV = $("zonaDropVideo"), inputVideos = $("inputVideos"), gridV = $("gridVideosAdmin"), barraV = $("barraVideo");
+
+zonaV.addEventListener("click", () => inputVideos.click());
+zonaV.addEventListener("dragover", e => { e.preventDefault(); zonaV.classList.add("encima"); });
+zonaV.addEventListener("dragleave", () => zonaV.classList.remove("encima"));
+zonaV.addEventListener("drop", e => { e.preventDefault(); zonaV.classList.remove("encima"); subirVideos(e.dataTransfer.files); });
+inputVideos.addEventListener("change", () => subirVideos(inputVideos.files));
+
+async function subirVideos(files) {
+  const lista = [...files].filter(f => f.type.startsWith("video/"));
+  if (!lista.length) return;
+  barraV.classList.remove("oculto"); barraV.value = 0;
+  let ok = 0, errores = [];
+  for (let i = 0; i < lista.length; i++) {
+    const f = lista[i];
+    const nombre = "videos/" + Date.now() + "-" + i + "-" + f.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+    const { error } = await sb.storage.from("fotos").upload(nombre, f, { cacheControl: "3600" });
+    if (!error) ok++; else errores.push(f.name + ": " + error.message);
+    barraV.value = Math.round(((i + 1) / lista.length) * 100);
+  }
+  barraV.classList.add("oculto");
+  inputVideos.value = "";
+  if (errores.length) aviso("Subidos " + ok + ". Fallaron: " + errores.join(" · "), "error");
+  else aviso(ok + " video(s) subido(s) 🎬 ¡Ya se ven en el modo Netflix!");
+  cargarVideos();
+}
+
+async function cargarVideos() {
+  const { data, error } = await sb.storage.from("fotos").list("videos", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+  if (error) return aviso("No se pudieron cargar los videos: " + error.message, "error");
+  gridV.innerHTML = "";
+  const archivos = (data || []).filter(f => f.id && f.name && !f.name.startsWith("."));
+  archivos.forEach(f => {
+    const url = sb.storage.from("fotos").getPublicUrl("videos/" + f.name).data.publicUrl;
+    const titulo = f.name.replace(/^\d+-\d+-/, "").replace(/\.[^.]+$/, "").replace(/-/g, " ");
+    const div = document.createElement("div");
+    div.className = "vid";
+    div.innerHTML = `<video src="${url}#t=1" preload="metadata" muted playsinline></video><button title="Borrar">🗑</button><div class="nom">${titulo}</div>`;
+    div.querySelector("button").addEventListener("click", async () => {
+      if (!confirm("¿Borrar este video del modo Netflix?")) return;
+      const { error } = await sb.storage.from("fotos").remove(["videos/" + f.name]);
+      if (error) return aviso("No se pudo borrar: " + error.message, "error");
+      cargarVideos();
+    });
+    gridV.appendChild(div);
+  });
+  $("contadorVideos").textContent = archivos.length ? archivos.length + " video(s) en el modo Netflix" : "Aún no hay videos — sube el primero 🎬";
 }
 
 /* ---------- CUENTA ---------- */
