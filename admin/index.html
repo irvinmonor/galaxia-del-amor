@@ -79,6 +79,36 @@ textarea{resize:vertical;min-height:90px}
 #zonaDropFondo.encima{border-color:var(--rosa);background:rgba(255,46,154,.08)}
 #previewFondo{margin-top:14px}
 #previewFondo img{width:100%;max-height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--borde)}
+
+/* ---------- PANEL DE SUBIDA FLOTANTE ---------- */
+#subiendo{
+  position:fixed;right:18px;bottom:18px;z-index:9000;width:min(360px,calc(100vw - 36px));
+  background:linear-gradient(160deg,#22103f,#150430);border:1px solid var(--rosa);border-radius:16px;
+  padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 25px rgba(255,46,154,.35);
+  transform:translateY(140%);transition:transform .4s cubic-bezier(.2,.9,.3,1.2);
+}
+#subiendo.visible{transform:translateY(0)}
+#subiendo .cab{display:flex;align-items:center;gap:9px;font-size:14px;color:#ffd1ec;margin-bottom:10px}
+#subiendo .cab b{flex:1;font-weight:600}
+#subPorcentaje{font-variant-numeric:tabular-nums;font-weight:700;color:#fff}
+#subiendo .spin{
+  width:15px;height:15px;border-radius:50%;flex:none;
+  border:2.5px solid rgba(255,107,214,.25);border-top-color:var(--rosa);
+  animation:girar .8s linear infinite;
+}
+@keyframes girar{to{transform:rotate(360deg)}}
+#subiendo.listo .spin{border-color:#4ade80;border-top-color:#4ade80;animation:none}
+#subiendo.listo{border-color:#4ade80;box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 25px rgba(74,222,128,.3)}
+.pista{height:9px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+#subBarra{
+  height:100%;width:0%;border-radius:999px;transition:width .25s ease;
+  background:linear-gradient(90deg,var(--rosa),var(--lila),var(--rosa));background-size:200% 100%;
+  animation:flujo 2s linear infinite;
+}
+@keyframes flujo{to{background-position:200% 0}}
+#subiendo.listo #subBarra{background:#4ade80;animation:none}
+#subDetalle{font-size:12.5px;color:#c9a6ff;margin-top:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#subExtra{font-size:11.5px;color:#8a6fb5;margin-top:3px}
 .badge-mail{font-size:13px;color:#9f86c9}
 progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
 </style>
@@ -141,7 +171,6 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         </p>
         <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4, webm, mov, mkv… varios a la vez)</small></div>
         <input type="file" id="inputVideos" accept="video/*,.mkv,.avi,.m3u8,.mpd,.ogv,.3gp,.flv,.wmv" multiple class="oculto">
-        <progress id="barraVideo" max="100" value="0" class="oculto"></progress>
         <div id="gridVideosAdmin"></div>
         <div id="contadorVideos"></div>
       </div>
@@ -157,7 +186,6 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       </p>
       <div id="zonaDrop">Arrastra tus fotos aquí o haz clic para elegirlas<br><small>(las que quieras, se optimizan solas)</small></div>
       <input type="file" id="inputFotos" accept="image/*" multiple class="oculto">
-      <progress id="barraSubida" max="100" value="0" class="oculto"></progress>
       <div id="gridFotos"></div>
       <div id="contadorFotos"></div>
     </div>
@@ -169,7 +197,6 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       </p>
       <div id="zonaDropFondo">Arrastra una imagen aquí o haz clic para elegirla</div>
       <input type="file" id="inputFondo" accept="image/*" class="oculto">
-      <progress id="barraFondo" max="100" value="0" class="oculto"></progress>
       <label>URL de la imagen de fondo</label>
       <div class="fila">
         <input type="url" id="fFondo" placeholder="https://… (vacío = tema oscuro)" style="flex:1;min-width:220px">
@@ -236,6 +263,18 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
   </div>
 
   <div class="pie">Panel privado · nada de esto es visible en la página pública 💕</div>
+</div>
+
+<!-- ======= PANEL DE SUBIDA (flotante, persistente) ======= -->
+<div id="subiendo">
+  <div class="cab">
+    <span class="spin"></span>
+    <b id="subTitulo">Subiendo…</b>
+    <span id="subPorcentaje">0%</span>
+  </div>
+  <div class="pista"><div id="subBarra"></div></div>
+  <div id="subDetalle"></div>
+  <div id="subExtra"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -341,7 +380,7 @@ $("btnGuardar").addEventListener("click", async () => {
 });
 
 /* ---------- FOTOS ---------- */
-const zona = $("zonaDrop"), inputFotos = $("inputFotos"), grid = $("gridFotos"), barra = $("barraSubida");
+const zona = $("zonaDrop"), inputFotos = $("inputFotos"), grid = $("gridFotos");
 
 zona.addEventListener("click", () => inputFotos.click());
 zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("encima"); });
@@ -353,23 +392,19 @@ async function subir(files) {
   const brutas = [...files].filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif|tiff?)$/i.test(f.name));
   if (!brutas.length) return;
 
-  const cont = $("contadorFotos");
-  barra.classList.remove("oculto"); barra.value = 0;
-
   // 1) convertir todo a WebP antes de subir
+  panelSub.abrir("Optimizando fotos…", brutas.reduce((a, f) => a + f.size, 0));
   const lista = [];
   let ahorro = 0;
   for (let i = 0; i < brutas.length; i++) {
-    cont.textContent = "Optimizando a WebP… " + (i + 1) + " de " + brutas.length;
+    panelSub.actualizar((i / brutas.length) * 100, "Convirtiendo a WebP… " + (i + 1) + " de " + brutas.length);
     const conv = await aWebp(brutas[i]);
     ahorro += brutas[i].size - conv.size;
     lista.push(conv);
   }
 
   // 2) subir en paralelo a Backblaze
-  const { ok, errores } = await subirLote(lista, "fotos", barra, cont);
-
-  barra.classList.add("oculto");
+  const { ok, errores } = await subirLote(lista, "fotos", "Subiendo foto" + (lista.length > 1 ? "s" : "") + "…");
   inputFotos.value = "";
   const nota = ahorro > 0 ? " (" + pesoLegible(ahorro) + " ahorrados en WebP)" : "";
   if (errores.length) aviso("Subidas " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
@@ -406,7 +441,7 @@ async function cargarFotos() {
 }
 
 /* ---------- VIDEOS (modo Netflix) ---------- */
-const zonaV = $("zonaDropVideo"), inputVideos = $("inputVideos"), gridV = $("gridVideosAdmin"), barraV = $("barraVideo");
+const zonaV = $("zonaDropVideo"), inputVideos = $("inputVideos"), gridV = $("gridVideosAdmin");
 
 zonaV.addEventListener("click", () => inputVideos.click());
 zonaV.addEventListener("dragover", e => { e.preventDefault(); zonaV.classList.add("encima"); });
@@ -597,43 +632,100 @@ async function subirAB2(file, carpeta, onProgreso, intentos = 4) {
   throw ultimoError;
 }
 
-/* Sube una lista en paralelo (3 a la vez) actualizando una barra global */
-async function subirLote(lista, carpeta, barra, etiqueta) {
-  const progresos = new Array(lista.length).fill(0);
-  const pintar = () => { barra.value = Math.round(progresos.reduce((a, b) => a + b, 0) / lista.length); };
+/* ---------- PANEL DE PROGRESO FLOTANTE ---------- */
+const panelSub = {
+  el: null, inicio: 0, bytesTotales: 0,
+  abrir(titulo, bytesTotales) {
+    this.el = $("subiendo");
+    this.inicio = Date.now();
+    this.bytesTotales = bytesTotales;
+    this.el.classList.remove("listo");
+    this.el.classList.add("visible");
+    $("subTitulo").textContent = titulo;
+    $("subPorcentaje").textContent = "0%";
+    $("subBarra").style.width = "0%";
+    $("subDetalle").textContent = "Preparando…";
+    $("subExtra").textContent = "";
+    window.onbeforeunload = () => "Hay una subida en curso. ¿Seguro que quieres salir?";
+  },
+  actualizar(pct, detalle) {
+    if (!this.el) return;
+    const p = Math.max(0, Math.min(100, pct));
+    $("subPorcentaje").textContent = Math.round(p) + "%";
+    $("subBarra").style.width = p + "%";
+    if (detalle) $("subDetalle").textContent = detalle;
+    const seg = (Date.now() - this.inicio) / 1000;
+    const hechos = this.bytesTotales * p / 100;
+    if (seg > 2 && hechos > 0) {
+      const vel = hechos / seg;
+      const faltan = (this.bytesTotales - hechos) / vel;
+      $("subExtra").textContent = pesoLegible(vel) + "/s · faltan " + tiempoLegible(faltan);
+    }
+  },
+  cerrar(mensaje) {
+    window.onbeforeunload = null;
+    if (!this.el) return;
+    this.el.classList.add("listo");
+    $("subTitulo").textContent = mensaje || "¡Listo!";
+    $("subPorcentaje").textContent = "100%";
+    $("subBarra").style.width = "100%";
+    $("subExtra").textContent = "";
+    setTimeout(() => this.el && this.el.classList.remove("visible"), 3500);
+  }
+};
+
+function tiempoLegible(s) {
+  if (!isFinite(s) || s < 0) return "…";
+  if (s < 60) return Math.ceil(s) + " s";
+  if (s < 3600) return Math.round(s / 60) + " min";
+  return (s / 3600).toFixed(1) + " h";
+}
+
+/* Sube una lista en paralelo (3 a la vez) mostrando progreso real por bytes */
+async function subirLote(lista, carpeta, titulo) {
+  const bytesTotales = lista.reduce((a, f) => a + f.size, 0);
+  const hechos = new Array(lista.length).fill(0);
+  panelSub.abrir(titulo, bytesTotales);
+
   let siguiente = 0, ok = 0;
   const errores = [];
+  const pintar = () => {
+    const suma = hechos.reduce((a, b) => a + b, 0);
+    const terminados = ok + errores.length;
+    panelSub.actualizar(
+      bytesTotales ? suma / bytesTotales * 100 : 0,
+      lista.length > 1
+        ? "Archivo " + Math.min(terminados + 1, lista.length) + " de " + lista.length + " · " + pesoLegible(suma) + " de " + pesoLegible(bytesTotales)
+        : lista[0].name + " · " + pesoLegible(suma) + " de " + pesoLegible(bytesTotales)
+    );
+  };
+  pintar();
 
   async function trabajador() {
     while (siguiente < lista.length) {
       const i = siguiente++;
       const f = lista[i];
       try {
-        await subirAB2(f, carpeta, p => { progresos[i] = p; pintar(); });
-        progresos[i] = 100; pintar(); ok++;
+        await subirAB2(f, carpeta, p => { hechos[i] = f.size * p / 100; pintar(); });
+        hechos[i] = f.size; ok++;
       } catch (e) {
-        progresos[i] = 100; pintar();
+        hechos[i] = f.size;
         errores.push(f.name + " (" + e.message + ")");
       }
-      if (etiqueta) etiqueta.textContent = "Subiendo… " + (ok + errores.length) + " de " + lista.length;
+      pintar();
     }
   }
   await Promise.all(Array.from({ length: Math.min(SUBIDAS_PARALELAS, lista.length) }, trabajador));
+  panelSub.cerrar(errores.length ? "Terminó con " + errores.length + " error(es)" : "¡Subida completa! 🎉");
   return { ok, errores };
 }
 
 async function subirVideos(files) {
   const lista = [...files].filter(f => f.type.startsWith("video/") || /\.(mkv|avi|m3u8|mpd|ogv|3gp|flv|wmv|mov|webm|mp4)$/i.test(f.name));
   if (!lista.length) return;
-  barraV.classList.remove("oculto"); barraV.value = 0;
-  let ok = 0, errores = [];
-  for (const f of lista) {
-    try { await subirAB2(f, "videos", barraV); ok++; }
-    catch (e) { errores.push(f.name + ": " + e.message); }
-  }
-  barraV.classList.add("oculto");
+  const { ok, errores } = await subirLote(lista, "videos", "Subiendo video" + (lista.length > 1 ? "s" : "") + "…");
   inputVideos.value = "";
-  if (errores.length) aviso("Subidos " + ok + ". Fallaron: " + errores.join(" · "), "error");
+  if (errores.length) aviso("Subidos " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
   else aviso(ok + " video(s) subido(s) 🎬 ¡Ya se ven en el modo Netflix!");
   cargarVideos();
 }
@@ -667,7 +759,7 @@ async function cargarVideos() {
 }
 
 /* ---------- FONDO DE PORTADA ---------- */
-const zonaF = $("zonaDropFondo"), inputFondo = $("inputFondo"), barraF = $("barraFondo");
+const zonaF = $("zonaDropFondo"), inputFondo = $("inputFondo");
 
 function pintarPreviewFondo() {
   const u = $("fFondo").value.trim();
@@ -684,16 +776,18 @@ inputFondo.addEventListener("change", () => subirFondo(inputFondo.files[0]));
 
 async function subirFondo(file) {
   if (!file || !file.type.startsWith("image/")) return;
-  barraF.classList.remove("oculto"); barraF.value = 0;
+  const webp = await aWebp(file, 0.88);
+  panelSub.abrir("Subiendo fondo…", webp.size);
   try {
-    const url = await subirAB2(file, "fondos", barraF);
+    const url = await subirAB2(webp, "fondos", p => panelSub.actualizar(p, webp.name));
     $("fFondo").value = url;
     pintarPreviewFondo();
+    panelSub.cerrar("Fondo listo 🖼️");
     aviso("Fondo subido 🖼️ — no olvides darle a Guardar.");
   } catch (e) {
+    panelSub.cerrar("Falló la subida");
     aviso("No se pudo subir el fondo: " + e.message, "error");
   }
-  barraF.classList.add("oculto");
   inputFondo.value = "";
 }
 
