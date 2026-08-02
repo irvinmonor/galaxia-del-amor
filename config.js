@@ -3,6 +3,6 @@
    (Supabase → Project Settings → API)
    ============================================================ */
 window.GALAXIA_SUPABASE = {
-  url: "PEGA_AQUI_TU_PROJECT_URL",       // ej. https://abcd1234.supabase.co
-  anonKey: "PEGA_AQUI_TU_ANON_PUBLIC_KEY"
+  url: "https://cucohhqkbjssjidafjwy.supabase.co",
+  anonKey: "sb_publishable_wR0GEFnB-T6HtFfUaREqJw_mcy0f-ZA"
 };

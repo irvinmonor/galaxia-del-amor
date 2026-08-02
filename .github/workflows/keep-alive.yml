@@ -1,0 +1,36 @@
+name: Mantener Supabase activo
+
+# Supabase (plan gratis) pausa proyectos sin actividad.
+# Este workflow genera actividad real cada 2 días: sube un archivo
+# temporal al storage, lo borra y hace una lectura a la base de datos.
+on:
+  schedule:
+    - cron: "0 12 */2 * *"   # cada 2 días a las 12:00 UTC
+  workflow_dispatch: {}       # también se puede lanzar a mano
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Actividad en Supabase (subir, borrar y leer)
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          set -e
+          echo "keepalive $(date -u)" > ka.txt
+
+          up=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$URL/storage/v1/object/fotos/.keepalive" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+            -H "x-upsert: true" -H "Content-Type: text/plain" --data-binary @ka.txt)
+          echo "Subida: $up"
+
+          del=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$URL/storage/v1/object/fotos/.keepalive" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "Borrado: $del"
+
+          leer=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/galaxia_config?id=eq.1" \
+            -H "apikey: $KEY")
+          echo "Lectura BD: $leer"
+
+          [ "$up" = "200" ] && [ "$del" = "200" ] && [ "$leer" = "200" ]
