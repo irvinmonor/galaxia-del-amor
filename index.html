@@ -132,8 +132,7 @@ canvas#c{display:block;position:fixed;inset:0}
   82%{transform:scale(3.2);opacity:1;filter:brightness(1.35) drop-shadow(0 0 60px rgba(229,9,20,.9))}
   100%{transform:scale(4.4);opacity:0;filter:brightness(1.6)}
 }
-#nOverlay.activa{animation:n-fondo 2.6s ease forwards}
-@keyframes n-fondo{0%,88%{background:#000}100%{background:transparent}}
+/* el fondo se queda negro todo el tiempo para no dejar ver lo que hay detrás */
 
 /* ---------- MODAL SORPRESA ---------- */
 #modalSorpresa{
@@ -148,7 +147,17 @@ canvas#c{display:block;position:fixed;inset:0}
   transform:scale(.7);transition:transform .4s cubic-bezier(.68,-.55,.27,1.55);
 }
 #modalSorpresa.abierta .caja-sorpresa{transform:scale(1)}
-.caja-sorpresa .regalo{font-size:56px;animation:latido 1.6s ease-in-out infinite}
+.corazon-lindo{
+  width:64px;height:58px;position:relative;margin:0 auto 20px;
+  animation:latido 1.2s ease-in-out infinite;
+  filter:drop-shadow(0 0 16px rgba(255,46,154,.85)) drop-shadow(0 0 40px rgba(179,136,255,.5));
+}
+.corazon-lindo::before,.corazon-lindo::after{
+  content:"";position:absolute;top:0;width:34px;height:54px;border-radius:34px 34px 0 0;
+  background:linear-gradient(135deg,#ff8fd0,#ff2e9a);
+}
+.corazon-lindo::before{left:32px;transform:rotate(45deg);transform-origin:0 100%}
+.corazon-lindo::after{left:0;transform:rotate(-45deg);transform-origin:100% 100%}
 .caja-sorpresa p{color:#e8d7ff;font-size:16px;line-height:1.7;white-space:pre-wrap}
 #cerrarSorpresa{
   border:none;cursor:pointer;padding:11px 32px;border-radius:999px;font-size:15px;font-weight:700;color:#fff;
@@ -325,7 +334,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 <!-- ======= MODAL SORPRESA ======= -->
 <div id="modalSorpresa">
   <div class="caja-sorpresa">
-    <div class="regalo">🔒</div>
+    <div class="corazon-lindo"></div>
     <p id="textoSorpresa"></p>
     <button id="cerrarSorpresa">Cerrar</button>
   </div>
@@ -372,7 +381,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
    ============================================================ */
 const DEFAULTS = {
   sorpresaActiva: false,
-  sorpresaMensaje: "🤫 Es una sorpresa…\n\nSe desbloquea el 12 de agosto 💖\n¡No comas ansias!",
+  sorpresaMensaje: "Se desbloquea el 12 de agosto",
   musicaActiva: false,
   musicaUrl: "https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1",
   nombre: "JENIFFER",
@@ -593,8 +602,8 @@ document.getElementById("tileNetflix").addEventListener("click", () => {
   document.getElementById("intro").classList.add("oculto");
   pintarVideos();
   setTimeout(() => {
-    ov.classList.remove("activa");
-    netflixUI.classList.add("abierta");
+    netflixUI.classList.add("abierta");   // primero se muestra Jeniflix…
+    ov.classList.remove("activa");        // …y hasta entonces se quita el fondo negro
   }, 2600);
 });
 
