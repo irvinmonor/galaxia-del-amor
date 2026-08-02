@@ -134,21 +134,22 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 #btnVolverFlix:hover{background:rgba(255,255,255,.15);color:#fff}
 #flixContenido{flex:1;overflow-y:auto;padding:10px 22px 40px}
 #flixContenido h3{color:#fff;font-size:18px;margin:10px 0 16px}
-#gridVideos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+#gridVideos{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+@media (max-width:700px){ #gridVideos{grid-template-columns:1fr;gap:16px} }
 .card-video{
   position:relative;border-radius:10px;overflow:hidden;cursor:pointer;background:#1a1a1a;
   aspect-ratio:16/9;border:2px solid transparent;transition:transform .25s,border-color .25s,box-shadow .25s;
 }
 .card-video:hover{transform:scale(1.06);border-color:#e50914;box-shadow:0 6px 30px rgba(229,9,20,.35);z-index:2}
-.card-video video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.card-video video,.card-video img.portada{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .card-video .play-ico{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:38px;
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52px;
   background:rgba(0,0,0,.25);opacity:.85;transition:opacity .2s;text-shadow:0 0 14px rgba(0,0,0,.8);
 }
 .card-video:hover .play-ico{opacity:1}
 .card-video .nombre-video{
-  position:absolute;left:0;right:0;bottom:0;padding:18px 10px 8px;font-size:12.5px;color:#eee;
-  background:linear-gradient(transparent,rgba(0,0,0,.85));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  position:absolute;left:0;right:0;bottom:0;padding:26px 14px 12px;font-size:15.5px;font-weight:600;color:#fff;
+  background:linear-gradient(transparent,rgba(0,0,0,.9));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 #sinVideos{color:#888;font-size:15px;text-align:center;margin-top:60px;display:none}
 .card-video .visto{
@@ -455,11 +456,11 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 <!-- ======= MODO NETFLIX ======= -->
 <div id="netflixUI">
   <header>
-    <span class="logo-flix">JENIFLIX</span>
+    <span class="logo-flix" id="logoFlix">JENIFLIX</span>
     <button id="btnVolverFlix">← Inicio</button>
   </header>
   <div id="flixContenido">
-    <h3>Nuestros videos 💕</h3>
+    <h3 id="flixTitulo">Nuestros videos 💕</h3>
     <div id="gridVideos"></div>
     <p id="sinVideos">Aún no hay videos… pronto llegarán los primeros 🎬</p>
   </div>
@@ -571,6 +572,8 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 const DEFAULTS = {
   sorpresaActiva: false,
   sorpresaMensaje: "Se desbloquea el 12 de agosto",
+  flixTitulo: "Nuestros videos 💕",
+  flixLogo: "JENIFLIX",
   fondoPortada: "",   // URL de imagen de fondo para la portada (vacío = tema oscuro)
   musicaActiva: false,
   musicaUrl: "https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1",
@@ -651,7 +654,12 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
         const ob = mb.orden === undefined ? 9999 : mb.orden;
         return oa - ob;
       });
-      VIDEOS.forEach(v => { v.terminada = !!(meta[v.fileName] || {}).terminada; });
+      VIDEOS.forEach(v => {
+        const m = meta[v.fileName] || {};
+        v.terminada = !!m.terminada;
+        v.titulo = m.titulo || "";
+        v.miniatura = m.miniatura || "";
+      });
     }
     if (rf.ok) FOTOS = ((await rf.json()).archivos || []).map(f => f.url);
   } catch (e) {
@@ -739,6 +747,7 @@ if (CONFIG.musicaActiva && CONFIG.musicaUrl) audio.src = CONFIG.musicaUrl;
 else document.getElementById("player").style.display = "none";
 
 async function entrarGalaxia() {
+  recordarPantalla("galaxia");
   document.getElementById("intro").classList.add("oculto");
   document.body.classList.add("iniciado");
   if (CONFIG.musicaActiva) {
@@ -771,6 +780,15 @@ function sonidoTudum() {
   } catch (e) { /* sin sonido, no pasa nada */ }
 }
 
+/* --- textos editables de Jeniflix --- */
+document.getElementById("flixTitulo").textContent = CONFIG.flixTitulo || DEFAULTS.flixTitulo;
+document.getElementById("logoFlix").textContent = CONFIG.flixLogo || DEFAULTS.flixLogo;
+
+/* --- recordar en qué pantalla se quedaron --- */
+const CLAVE_PANTALLA = "jeniflix_pantalla";
+function recordarPantalla(p) { try { localStorage.setItem(CLAVE_PANTALLA, p); } catch (e) {} }
+function pantallaGuardada() { try { return localStorage.getItem(CLAVE_PANTALLA); } catch (e) { return null; } }
+
 /* --- MODO NETFLIX --- */
 const netflixUI = document.getElementById("netflixUI");
 const gridVideos = document.getElementById("gridVideos");
@@ -784,21 +802,26 @@ function pintarVideos() {
   VIDEOS.forEach(v => {
     const card = document.createElement("div");
     card.className = "card-video" + (v.terminada ? " vista" : "");
+    const portada = v.miniatura
+      ? `<img class="portada" src="${v.miniatura}" alt="" loading="lazy">`
+      : `<video src="${v.url}#t=1" preload="metadata" muted playsinline></video>`;
     card.innerHTML = `
-      <video src="${v.url}#t=1" preload="metadata" muted playsinline></video>
+      ${portada}
       <div class="play-ico">▶</div>
       ${v.terminada ? '<div class="sello">✔ Ya la vimos</div>' : ""}
-      <div class="nombre-video">${v.nombre}</div>
+      <div class="nombre-video">${v.titulo || v.nombre}</div>
       <div class="visto"><span></span></div>`;
-    const vistoSeg = leerVistos()[v.fileName || v.url];
-    if (vistoSeg) {
-      const tmp = card.querySelector("video");
-      tmp.addEventListener("loadedmetadata", () => {
-        if (!tmp.duration) return;
-        const barra = card.querySelector(".visto");
+    const pos = posicionDe(v.fileName || v.url);
+    if (pos) {
+      const barra = card.querySelector(".visto");
+      const pintarBarra = dur => {
+        if (!dur) return;
         barra.style.display = "block";
-        barra.firstElementChild.style.width = Math.min(100, vistoSeg / tmp.duration * 100) + "%";
-      });
+        barra.firstElementChild.style.width = Math.min(100, pos.t / dur * 100) + "%";
+      };
+      const tmp = card.querySelector("video");
+      if (tmp) tmp.addEventListener("loadedmetadata", () => pintarBarra(tmp.duration));
+      else pintarBarra(pos.d);
     }
     card.addEventListener("click", () => abrirVideo(v));
     gridVideos.appendChild(card);
@@ -841,8 +864,15 @@ function guardarPosicion() {
   const vistos = leerVistos();
   // si ya casi termina, se olvida para que la próxima empiece de cero
   if (vid.currentTime > vid.duration - 15 || vid.currentTime < 5) delete vistos[videoActual];
-  else vistos[videoActual] = Math.floor(vid.currentTime);
+  else vistos[videoActual] = { t: Math.floor(vid.currentTime), d: Math.floor(vid.duration) };
   try { localStorage.setItem(CLAVE_VISTOS, JSON.stringify(vistos)); } catch (e) {}
+}
+
+/* devuelve {t, d} aceptando también el formato viejo (solo número) */
+function posicionDe(clave) {
+  const r = leerVistos()[clave];
+  if (r === undefined) return null;
+  return typeof r === "number" ? { t: r, d: 0 } : r;
 }
 
 let hls = null;
@@ -859,7 +889,7 @@ async function abrirVideo(v) {
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
   videoActual = v.fileName || v.url;
-  const desde = leerVistos()[videoActual] || 0;
+  const desde = (posicionDe(videoActual) || {}).t || 0;
 
   if (hls) { hls.destroy(); hls = null; }
   const esHls = /\.m3u8(\?|$)/i.test(v.url);
@@ -1016,20 +1046,24 @@ addEventListener("keydown", e => {
 document.getElementById("btnVolverFlix").addEventListener("click", () => {
   netflixUI.classList.remove("abierta");
   document.getElementById("intro").classList.remove("oculto");
+  recordarPantalla("inicio");
 });
 
 /* --- cuadro Netflix: tudum + animación de la N --- */
-document.getElementById("tileNetflix").addEventListener("click", () => {
+function entrarJeniflix(conAnimacion) {
+  recordarPantalla("jeniflix");
+  pintarVideos();
+  document.getElementById("intro").classList.add("oculto");
+  if (!conAnimacion) return netflixUI.classList.add("abierta");
   const ov = document.getElementById("nOverlay");
   sonidoTudum();
   ov.classList.add("activa");
-  document.getElementById("intro").classList.add("oculto");
-  pintarVideos();
   setTimeout(() => {
     netflixUI.classList.add("abierta");   // primero se muestra Jeniflix…
     ov.classList.remove("activa");        // …y hasta entonces se quita el fondo negro
   }, 2600);
-});
+}
+document.getElementById("tileNetflix").addEventListener("click", () => entrarJeniflix(true));
 
 /* --- cuadro sorpresa 🔒: la galaxia, bloqueada hasta el 12 --- */
 const tileSorpresa = document.getElementById("tileSorpresa");
@@ -1047,6 +1081,14 @@ tileSorpresa.addEventListener("click", () => {
 });
 document.getElementById("cerrarSorpresa").addEventListener("click", () => modalSorpresa.classList.remove("abierta"));
 modalSorpresa.addEventListener("click", e => { if (e.target === modalSorpresa) modalSorpresa.classList.remove("abierta"); });
+
+/* al recargar, volver a donde estaban (sin la animación de la J otra vez) */
+(function restaurarPantalla() {
+  const p = pantallaGuardada();
+  if (p === "jeniflix") entrarJeniflix(false);
+  else if (p === "galaxia" && desbloqueada) entrarGalaxia();
+  else if (p === "galaxia") recordarPantalla("inicio");   // ya no tiene acceso
+})();
 
 /* --- reproductor --- */
 const playBtn = document.getElementById("play"),

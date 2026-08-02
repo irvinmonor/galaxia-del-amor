@@ -102,6 +102,22 @@ textarea{resize:vertical;min-height:90px}
   .vbtn{width:29px;height:29px;font-size:12px}
   .vacciones{gap:3px}
 }
+/* editor de titulo/portada */
+.veditor{
+  margin:-4px 0 12px;padding:16px 18px;border-radius:12px;
+  background:rgba(229,9,20,.07);border:1px solid rgba(229,9,20,.35);
+}
+.veditor label{margin-top:8px}
+.veditor .edZona{
+  border:2px dashed rgba(229,9,20,.45);border-radius:12px;padding:18px;text-align:center;
+  color:#e8a8ae;cursor:pointer;font-size:13.5px;transition:all .2s;
+}
+.veditor .edZona.encima{border-color:#e50914;background:rgba(229,9,20,.1)}
+.veditor .edPreview{margin-top:12px}
+.veditor .edPreview img{width:190px;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:1px solid var(--borde)}
+img.vmini{width:88px;height:50px;object-fit:cover;border-radius:8px;background:#000;flex:none}
+@media (max-width:600px){ img.vmini{width:62px;height:38px} }
+
 /* botones sobre las fotos */
 .foto .acciones{position:absolute;top:6px;right:6px;display:flex;gap:5px}
 .foto .acciones button{
@@ -211,6 +227,12 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
           Con <b>▲▼</b> cambias el orden en que aparecen, con <b>✔</b> marcas una como
           <b>Terminada</b> (se van solas hasta el final) y con <b>🔗</b> copias su link.
         </p>
+        <label>Encabezado que se ve dentro de Jeniflix</label>
+        <input type="text" id="fFlixTitulo" placeholder="Nuestros videos 💕">
+        <label>Nombre del logo (arriba a la izquierda)</label>
+        <input type="text" id="fFlixLogo" placeholder="JENIFLIX">
+        <button class="btn" id="btnGuardarFlix" style="margin-bottom:18px">💾 Guardar encabezado</button>
+
         <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4, webm, mov, mkv… varios a la vez)</small></div>
         <input type="file" id="inputVideos" accept="video/*,.mkv,.avi,.m3u8,.mpd,.ogv,.3gp,.flv,.wmv" multiple class="oculto">
         <div id="gridVideosAdmin"></div>
@@ -371,6 +393,15 @@ function seccion(cual) {
   $("tabNetflix").classList.toggle("activo", cual === "netflix");
   $("tabGalaxia").classList.toggle("activo", cual === "galaxia");
 }
+$("btnGuardarFlix").addEventListener("click", async () => {
+  const b = $("btnGuardarFlix"); b.disabled = true;
+  try {
+    await guardarConfig({ flixTitulo: $("fFlixTitulo").value.trim(), flixLogo: $("fFlixLogo").value.trim() });
+    aviso("Encabezado guardado ✅");
+  } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+  b.disabled = false;
+});
+
 $("tabNetflix").addEventListener("click", () => seccion("netflix"));
 $("tabGalaxia").addEventListener("click", () => seccion("galaxia"));
 $("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); vista("vistaLogin"); });
@@ -397,6 +428,8 @@ async function cargarConfig() {
   $("fSorpresa").checked = !!d.sorpresaActiva;
   $("fSorpresaMsg").value = d.sorpresaMensaje || "Se desbloquea el 12 de agosto";
   $("fFondo").value = d.fondoPortada || "";
+  $("fFlixTitulo").value = d.flixTitulo || "Nuestros videos 💕";
+  $("fFlixLogo").value = d.flixLogo || "JENIFLIX";
   pintarPreviewFondo();
 }
 
@@ -843,14 +876,18 @@ function pintarVids() {
     const m = META[v.fileName] || {};
     const fila = document.createElement("div");
     fila.className = "vfila" + (m.terminada ? " terminada" : "");
+    const mini = m.miniatura
+      ? `<img class="vmini" src="${m.miniatura}" alt="">`
+      : `<video class="vmini" src="${v.url}#t=1" preload="metadata" muted playsinline></video>`;
     fila.innerHTML = `
       <span class="vpos">${i + 1}</span>
-      <video class="vmini" src="${v.url}#t=1" preload="metadata" muted playsinline></video>
+      ${mini}
       <div class="vinfo">
-        <div class="vnom">${v.nombre}</div>
-        <div class="vmeta">${pesoLegible(v.tam || 0)}${m.terminada ? ' · <b class="fin">✔ Terminada</b>' : ""}</div>
+        <div class="vnom">${m.titulo || v.nombre}</div>
+        <div class="vmeta">${pesoLegible(v.tam || 0)}${m.titulo ? " · título propio" : ""}${m.miniatura ? " · portada propia" : ""}${m.terminada ? ' · <b class="fin">✔ Terminada</b>' : ""}</div>
       </div>
       <div class="vacciones">
+        <button class="vbtn" data-a="editar" title="Título y portada">✏️</button>
         <button class="vbtn" data-a="subir"  title="Subir en la lista">▲</button>
         <button class="vbtn" data-a="bajar"  title="Bajar en la lista">▼</button>
         <button class="vbtn" data-a="fin"    title="Marcar como terminada">${m.terminada ? "↩" : "✔"}</button>
@@ -858,6 +895,7 @@ function pintarVids() {
         <button class="vbtn peligro" data-a="borrar" title="Borrar">🗑</button>
       </div>`;
 
+    fila.querySelector('[data-a=editar]').addEventListener("click", () => abrirEditor(fila, v));
     fila.querySelector('[data-a=subir]').addEventListener("click", () => mover(i, -1));
     fila.querySelector('[data-a=bajar]').addEventListener("click", () => mover(i, 1));
     fila.querySelector('[data-a=link]').addEventListener("click", () => copiar(v.url, "video"));
@@ -887,6 +925,80 @@ function pintarVids() {
   $("contadorVideos").textContent = VIDS.length
     ? VIDS.length + " video(s) · " + term + " terminado(s) · así es el orden en Jeniflix"
     : "Aún no hay videos — sube el primero 🎬";
+}
+
+/* editor de título y portada de un video */
+function abrirEditor(fila, v) {
+  const ya = fila.nextElementSibling;
+  if (ya && ya.classList.contains("veditor")) return ya.remove();
+  document.querySelectorAll(".veditor").forEach(e => e.remove());
+
+  const m = META[v.fileName] || {};
+  const ed = document.createElement("div");
+  ed.className = "veditor";
+  ed.innerHTML = `
+    <label>Título que se verá en Jeniflix</label>
+    <input type="text" class="edTitulo" placeholder="${v.nombre}" value="${(m.titulo || "").replace(/"/g, "&quot;")}">
+    <label>Portada (miniatura)</label>
+    <div class="edZona">Arrastra una imagen o haz clic para elegirla</div>
+    <input type="file" class="edFile" accept="image/*" style="display:none">
+    <div class="fila" style="margin-top:8px">
+      <input type="url" class="edMini" placeholder="…o pega el link de una imagen" value="${(m.miniatura || "").replace(/"/g, "&quot;")}" style="flex:1;min-width:200px">
+      <button class="btn sec edQuitar" style="margin:0">Quitar</button>
+    </div>
+    <div class="edPreview"></div>
+    <div class="fila">
+      <button class="btn edGuardar">💾 Guardar</button>
+      <button class="btn sec edCancelar">Cancelar</button>
+    </div>`;
+  fila.after(ed);
+
+  const inTitulo = ed.querySelector(".edTitulo"), inMini = ed.querySelector(".edMini"),
+        zona = ed.querySelector(".edZona"), file = ed.querySelector(".edFile"),
+        prev = ed.querySelector(".edPreview");
+
+  const pintar = () => {
+    const u = inMini.value.trim();
+    prev.innerHTML = u ? `<img src="${u}" alt="">` : "";
+  };
+  pintar();
+  inMini.addEventListener("input", pintar);
+  ed.querySelector(".edQuitar").addEventListener("click", () => { inMini.value = ""; pintar(); });
+
+  zona.addEventListener("click", () => file.click());
+  zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("encima"); });
+  zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
+  zona.addEventListener("drop", e => { e.preventDefault(); zona.classList.remove("encima"); subirMini(e.dataTransfer.files[0]); });
+  file.addEventListener("change", () => subirMini(file.files[0]));
+
+  async function subirMini(f) {
+    if (!f || !f.type.startsWith("image/")) return;
+    const webp = await aWebp(f, 0.85);
+    panelSub.abrir("Subiendo portada…", webp.size);
+    try {
+      const url = await subirAB2(webp, "portadas", p => panelSub.actualizar(p, webp.name));
+      inMini.value = url; pintar();
+      panelSub.cerrar("Portada lista 🖼️");
+    } catch (e) {
+      panelSub.cerrar("Falló la subida");
+      aviso("No se pudo subir la portada: " + e.message, "error");
+    }
+    file.value = "";
+  }
+
+  ed.querySelector(".edCancelar").addEventListener("click", () => ed.remove());
+  ed.querySelector(".edGuardar").addEventListener("click", async () => {
+    const t = inTitulo.value.trim(), mi = inMini.value.trim();
+    const nuevo = Object.assign({}, META[v.fileName]);
+    if (t) nuevo.titulo = t; else delete nuevo.titulo;
+    if (mi) nuevo.miniatura = mi; else delete nuevo.miniatura;
+    META[v.fileName] = nuevo;
+    try {
+      await guardarConfig({ videosMeta: META });
+      aviso("Guardado ✅ Ya se ve así en Jeniflix.");
+      ed.remove(); pintarVids();
+    } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+  });
 }
 
 async function mover(i, dir) {
