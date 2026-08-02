@@ -137,6 +137,17 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     </div>
 
     <div class="tarjeta">
+      <h2>🎁 Cuadro sorpresa (?)</h2>
+      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 6px">
+        Mientras esté desactivado, el cuadro "?" solo lo ves tú (con sesión iniciada en este navegador).
+        Actívalo el día 12 para que ella lo vea. 😉
+      </p>
+      <label class="toggle"><input type="checkbox" id="fSorpresa"> Mostrar el cuadro sorpresa a todos</label>
+      <label>Mensaje al abrir la sorpresa</label>
+      <textarea id="fSorpresaMsg" style="min-height:80px"></textarea>
+    </div>
+
+    <div class="tarjeta">
       <h2>🎵 Música</h2>
       <label class="toggle"><input type="checkbox" id="fMusica"> Activar música de fondo</label>
       <label>URL de la canción (mp3 directo)</label>
@@ -234,6 +245,8 @@ async function cargarConfig() {
   $("fFrasesKitty").value = (d.frasesKitty || []).join("\n");
   $("fMusica").checked = !!d.musicaActiva;
   $("fMusicaUrl").value = d.musicaUrl || "";
+  $("fSorpresa").checked = !!d.sorpresaActiva;
+  $("fSorpresaMsg").value = d.sorpresaMensaje || "🤫 Hay algo especial preparándose para ti…\n\nVuelve el día 12 💖";
 }
 
 $("btnGuardar").addEventListener("click", async () => {
@@ -247,7 +260,9 @@ $("btnGuardar").addEventListener("click", async () => {
     carta: $("fCarta").value,
     firma: $("fFirma").value.trim(),
     musicaActiva: $("fMusica").checked,
-    musicaUrl: $("fMusicaUrl").value.trim()
+    musicaUrl: $("fMusicaUrl").value.trim(),
+    sorpresaActiva: $("fSorpresa").checked,
+    sorpresaMensaje: $("fSorpresaMsg").value
   };
   const frases = lineas($("fFrases").value);
   const frasesKitty = lineas($("fFrasesKitty").value);
