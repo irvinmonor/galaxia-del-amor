@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Nuestra Galaxia de Amor 💖</title>
+<meta name="description" content="Una galaxia hecha con amor, solo para ti.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💖</text></svg>">
+<style>
+:root{
+  --rosa:#ff6bd6; --rosa2:#ff2e9a; --lila:#b388ff; --fondo:#0a0018;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--fondo);overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;color:#fff}
+canvas#c{display:block;position:fixed;inset:0}
+
+/* ---------- PANTALLA DE ENTRADA ---------- */
+#intro{
+  position:fixed;inset:0;z-index:5000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:26px;text-align:center;padding:24px;
+  background:radial-gradient(ellipse at 50% 40%, #2a0a4a 0%, #12002b 55%, #05000f 100%);
+  transition:opacity 1.2s ease, visibility 1.2s;
+}
+#intro.oculto{opacity:0;visibility:hidden;pointer-events:none}
+#intro .kitty-intro{width:130px;height:130px;animation:flotar 3s ease-in-out infinite}
+#intro h1{
+  margin:0;font-size:clamp(28px,7vw,54px);font-weight:800;letter-spacing:1px;
+  background:linear-gradient(90deg,#ff6bd6,#ffd1ec,#b388ff,#ff6bd6);
+  background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:brillo-texto 5s linear infinite;
+}
+#intro p{margin:0;max-width:520px;color:#e8d7ff;font-size:clamp(15px,4vw,19px);line-height:1.6}
+#btnEntrar{
+  border:none;cursor:pointer;padding:16px 42px;border-radius:999px;font-size:18px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--rosa2),var(--lila));
+  box-shadow:0 0 25px rgba(255,46,154,.7),0 0 60px rgba(179,136,255,.4);
+  transition:transform .25s, box-shadow .25s;animation:latido 1.6s ease-in-out infinite;
+}
+#btnEntrar:hover{transform:scale(1.08)}
+@keyframes latido{0%,100%{transform:scale(1)}25%{transform:scale(1.06)}40%{transform:scale(1)}60%{transform:scale(1.06)}}
+@keyframes brillo-texto{0%{background-position:0 0}100%{background-position:300% 0}}
+@keyframes flotar{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}
+#intro small{color:#9f86c9;font-size:12px}
+
+/* ---------- BARRA SUPERIOR ---------- */
+#topbar{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:1200;
+  display:flex;gap:10px;opacity:0;transition:opacity 1s .8s;
+}
+body.iniciado #topbar{opacity:1}
+.chip{
+  border:1px solid rgba(255,107,214,.55);background:rgba(20,0,40,.55);backdrop-filter:blur(8px);
+  color:#ffd1ec;padding:9px 16px;border-radius:999px;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:all .25s;user-select:none;
+  box-shadow:0 0 12px rgba(255,46,154,.35);
+}
+.chip:hover{background:rgba(255,46,154,.25);transform:translateY(-2px)}
+
+/* ---------- REPRODUCTOR ---------- */
+#player{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);width:92%;max-width:560px;z-index:1200;
+  display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:999px;
+  border:1px solid rgba(255,107,214,.6);background:rgba(20,0,40,.6);backdrop-filter:blur(10px);
+  box-shadow:0 0 18px rgba(255,46,154,.5),0 0 45px rgba(179,136,255,.25);
+  opacity:0;transition:opacity 1s 1.2s;
+}
+body.iniciado #player{opacity:1}
+#play{
+  background:linear-gradient(135deg,var(--rosa2),var(--lila));border:none;color:#fff;width:44px;height:44px;
+  min-width:44px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 14px rgba(255,46,154,.8);transition:transform .2s;
+}
+#play:hover{transform:scale(1.12)}
+#discoNota{font-size:22px;animation:girar 4s linear infinite;animation-play-state:paused}
+body.tocando #discoNota{animation-play-state:running}
+@keyframes girar{to{transform:rotate(360deg)}}
+#progress{flex:1;height:12px;background:rgba(255,255,255,.12);border-radius:999px;cursor:pointer;overflow:hidden}
+#progress-bar{
+  height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(270deg,var(--rosa),var(--rosa2),var(--lila),var(--rosa));
+  background-size:400% 100%;animation:flujo 5s ease infinite;box-shadow:0 0 10px var(--rosa2);
+}
+@keyframes flujo{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+#time{min-width:78px;text-align:right;font-size:12px;color:#ffd1ec;text-shadow:0 0 6px var(--rosa2)}
+
+/* ---------- STICKERS KAWAII ---------- */
+.sticker{
+  position:fixed;z-index:900;width:88px;height:88px;cursor:pointer;user-select:none;
+  filter:drop-shadow(0 0 10px rgba(255,107,214,.55));
+  animation:flotar var(--dur,4s) ease-in-out infinite;transition:transform .25s;
+  opacity:0;
+}
+body.iniciado .sticker{opacity:1;transition:opacity 1.5s 1.5s, transform .25s}
+.sticker:hover{transform:scale(1.18)}
+.sticker svg{width:100%;height:100%}
+.burbuja{
+  position:fixed;z-index:1500;max-width:230px;padding:12px 16px;border-radius:18px;font-size:14px;line-height:1.45;
+  background:#fff;color:#d1157f;font-weight:600;box-shadow:0 4px 25px rgba(255,46,154,.55);
+  transform:scale(0);transform-origin:bottom center;transition:transform .3s cubic-bezier(.68,-.55,.27,1.55);
+  pointer-events:none;text-align:center;
+}
+.burbuja.visible{transform:scale(1)}
+.burbuja::after{
+  content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+  border:10px solid transparent;border-top-color:#fff;border-bottom:0;
+}
+
+/* ---------- CORAZONES FLOTANTES (DOM) ---------- */
+.corazon-up{
+  position:fixed;z-index:800;pointer-events:none;font-size:22px;
+  animation:sube linear forwards;
+}
+@keyframes sube{
+  0%{transform:translateY(0) scale(.6) rotate(0);opacity:0}
+  12%{opacity:1}
+  100%{transform:translateY(-72vh) scale(1.25) rotate(28deg);opacity:0}
+}
+
+/* ---------- MODAL CARTA ---------- */
+#modalCarta{
+  position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,0,15,.75);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:all .4s;
+}
+#modalCarta.abierta{opacity:1;visibility:visible}
+#carta{
+  width:100%;max-width:520px;max-height:80vh;overflow-y:auto;border-radius:24px;padding:34px 30px;position:relative;
+  background:linear-gradient(160deg,#fff6fb,#ffe3f4);color:#8e1060;
+  box-shadow:0 0 40px rgba(255,46,154,.6),0 0 100px rgba(179,136,255,.3);
+  transform:scale(.7) rotate(-3deg);transition:transform .45s cubic-bezier(.68,-.55,.27,1.55);
+}
+#modalCarta.abierta #carta{transform:scale(1) rotate(0)}
+#carta h2{margin:0 0 14px;font-size:24px;color:#d1157f;display:flex;align-items:center;gap:8px}
+#textoCarta{font-size:16px;line-height:1.8;white-space:pre-wrap;min-height:120px}
+#cursor{display:inline-block;width:2px;background:#d1157f;animation:parpadeo .7s steps(1) infinite}
+@keyframes parpadeo{50%{opacity:0}}
+#cerrarCarta{
+  position:absolute;top:12px;right:14px;border:none;background:#ffd1ec;color:#d1157f;width:34px;height:34px;
+  border-radius:50%;font-size:16px;cursor:pointer;font-weight:700;
+}
+#firmaCarta{margin-top:18px;text-align:right;font-style:italic;color:#b0338a;font-weight:600}
+
+/* ---------- AVISO GIRA ---------- */
+#hint{
+  position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:1100;font-size:13px;color:#c9a6ff;
+  background:rgba(20,0,40,.5);padding:7px 16px;border-radius:999px;backdrop-filter:blur(6px);
+  opacity:0;transition:opacity 1s 2.2s;pointer-events:none;white-space:nowrap;
+}
+body.iniciado #hint{opacity:.9}
+body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
+
+@media (max-width:600px){
+  .sticker{width:64px;height:64px}
+  .chip{font-size:12.5px;padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<!-- ======= PANTALLA DE ENTRADA ======= -->
+<div id="intro">
+  <div class="kitty-intro" id="kittyIntro"></div>
+  <h1 id="tituloIntro">Para Ti, Mi Amor 💖</h1>
+  <p>Hice una galaxia entera solo para ti…<br>porque ni todo el universo alcanza para decirte cuánto te amo.</p>
+  <button id="btnEntrar">💫 Entrar a nuestra galaxia</button>
+  <small>🎧 Sube el volumen para la sorpresa completa</small>
+</div>
+
+<!-- ======= ESCENA 3D ======= -->
+<canvas id="c"></canvas>
+
+<!-- ======= BARRA SUPERIOR ======= -->
+<div id="topbar">
+  <div class="chip" id="btnCarta">💌 Léeme</div>
+  <div class="chip" id="btnLluvia">💖 Lluvia de amor</div>
+</div>
+
+<div id="hint">🖐️ Gira la galaxia con tu dedo · toca a los gatitos</div>
+
+<!-- ======= REPRODUCTOR ======= -->
+<div id="player">
+  <span id="discoNota">🎵</span>
+  <button id="play">▶</button>
+  <div id="progress"><div id="progress-bar"></div></div>
+  <div id="time">0:00 / 0:00</div>
+</div>
+
+<!-- ======= MODAL CARTA ======= -->
+<div id="modalCarta">
+  <div id="carta">
+    <button id="cerrarCarta">✕</button>
+    <h2>💌 Una carta para ti</h2>
+    <div id="textoCarta"></div><span id="cursor">&nbsp;</span>
+    <div id="firmaCarta"></div>
+  </div>
+</div>
+
+<audio id="audio" loop>
+  <source src="https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1" type="audio/mpeg">
+</audio>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js"></script>
+<script>
+/* ============================================================
+   ✏️  CONFIGURACIÓN — EDITA AQUÍ SIN MIEDO
+   ============================================================ */
+const CONFIG = {
+  nombre: "JENNIFER",                        // 💕 nombre de tu persona especial
+  tituloIntro: "Para Ti, Jennifer 💖",
+  mensajeCentral: "TE AMO ❤️",
+  firma: "— Con todo mi corazón, tuyo por siempre 💍",
+  carta: `Mi amor:
+
+Si estás leyendo esto, es porque quise regalarte algo que no se rompe, no se marchita y no se acaba: un pedacito de universo.
+
+Cada estrella que ves girando aquí es un momento contigo. Cada corazón que flota es un "te amo" que a veces no alcanzo a decirte.
+
+Gracias por tu risa, por tu paciencia, por ser mi calma y mi locura al mismo tiempo.
+
+Te amo hoy, te amo mañana, y te amaré en cada galaxia que exista. ✨`,
+  frases: [
+    "💖 Mi amor","🌞 Mi sol","🌎 Mi mundo","✨ Brillas","❤️ Te amo","🌌 Mi universo",
+    "👑 Mi reina","🌠 Mi estrella","💫 Mi cielo","🔥 Siempre tú","🎶 Tu risa","🦋 Mariposas",
+    "💎 Eres todo","🙏 Gracias","💕 Cariño","🌹 Amor eterno","🤗 Tus abrazos","🌸 JENNIFER",
+    "🌈 Mi alegría","🌟 Contigo","🧸 Amor mío","🎁 Mi razón","🌙 Mi destino","💌 Recuerdos",
+    "🕊️ Mi paz","🪐 Mi órbita","🌊 Mi calma","💡 Mi luz","🍒 Dulzura","🥰 Mi vida",
+    "🎇 Felicidad","🌻 Mi girasol","🌺 Mi flor","💜 Eternidad","⭐ Mis sueños","✨ Magia",
+    "🎵 Nuestra canción","❤️‍🔥 Corazón","🌴 Mi paraíso","🌄 Mi amanecer","🌃 Noches contigo",
+    "💫 Mi inspiración","🌷 Juntos siempre","🎀 Mi ternura","🍀 Mi fortuna","🪞 Mi reflejo"
+  ],
+  frasesKitty: [
+    "¡Eres lo más bonito de este universo! 🌟",
+    "¿Sabías que alguien te ama muchísimo? 💖",
+    "Miau~ ¡me pidieron cuidarte por siempre! 🎀",
+    "Cada latido de este corazón dice tu nombre 💓",
+    "Eres más brillante que todas estas estrellas ✨",
+    "¡Un abrazo espacial para ti! 🤗🚀",
+    "El amor de ustedes dos es infinito ♾️💕",
+    "Miau miau = te amo en gatito 🐱💗"
+  ]
+};
+
+/* ============================================================
+   🐱 STICKER KAWAII (gatita con moño, estilo kitty)
+   ============================================================ */
+function kittySVG(color = "#ff5aa7", moño = "#ff2e9a") {
+  return `
+  <svg viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
+    <g>
+      <!-- orejas -->
+      <path d="M18 38 Q12 8 34 16 L48 26 Z" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
+      <path d="M102 38 Q108 8 86 16 L72 26 Z" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
+      <!-- cabeza -->
+      <ellipse cx="60" cy="58" rx="46" ry="38" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
+      <!-- moño -->
+      <g transform="translate(84,24) rotate(18)">
+        <circle cx="0" cy="0" r="7" fill="${moño}"/>
+        <path d="M-2 0 Q-20 -14 -16 2 Q-14 12 -2 2 Z" fill="${moño}"/>
+        <path d="M2 0 Q20 -14 16 2 Q14 12 2 2 Z" fill="${moño}"/>
+      </g>
+      <!-- ojos -->
+      <ellipse cx="42" cy="58" rx="4.5" ry="6.5" fill="#3b2b3a"/>
+      <ellipse cx="78" cy="58" rx="4.5" ry="6.5" fill="#3b2b3a"/>
+      <circle cx="43.5" cy="55.5" r="1.6" fill="#fff"/>
+      <circle cx="79.5" cy="55.5" r="1.6" fill="#fff"/>
+      <!-- nariz -->
+      <ellipse cx="60" cy="66" rx="4.5" ry="3.4" fill="#ffd93b"/>
+      <!-- bigotes -->
+      <g stroke="#3b2b3a" stroke-width="2.6" stroke-linecap="round">
+        <line x1="6"  y1="52" x2="26" y2="56"/><line x1="4"  y1="64" x2="25" y2="64"/><line x1="6"  y1="76" x2="26" y2="71"/>
+        <line x1="114" y1="52" x2="94" y2="56"/><line x1="116" y1="64" x2="95" y2="64"/><line x1="114" y1="76" x2="94" y2="71"/>
+      </g>
+      <!-- chapitas -->
+      <ellipse cx="34" cy="70" rx="6" ry="4" fill="${color}" opacity=".45"/>
+      <ellipse cx="86" cy="70" rx="6" ry="4" fill="${color}" opacity=".45"/>
+      <!-- corazón -->
+      <path d="M60 96 l-9-8 a6 6 0 1 1 9-7 a6 6 0 1 1 9 7 Z" fill="${moño}"/>
+    </g>
+  </svg>`;
+}
+
+/* ============================================================
+   🚪 INTRO
+   ============================================================ */
+document.getElementById("kittyIntro").innerHTML = kittySVG();
+document.getElementById("tituloIntro").textContent = CONFIG.tituloIntro;
+
+const audio = document.getElementById("audio");
+document.getElementById("btnEntrar").addEventListener("click", async () => {
+  document.getElementById("intro").classList.add("oculto");
+  document.body.classList.add("iniciado");
+  try { await audio.play(); estadoPlay(true); } catch(e) { /* el usuario puede darle play manual */ }
+  setTimeout(() => document.getElementById("hint").classList.add("fuera"), 7000);
+});
+
+/* ============================================================
+   🎵 REPRODUCTOR
+   ============================================================ */
+const playBtn = document.getElementById("play"),
+      progress = document.getElementById("progress"),
+      progressBar = document.getElementById("progress-bar"),
+      timeDisplay = document.getElementById("time");
+let tocando = false;
+
+function estadoPlay(v){ tocando = v; playBtn.textContent = v ? "❚❚" : "▶"; document.body.classList.toggle("tocando", v); }
+function fmt(s){ if(!isFinite(s)) return "0:00"; return Math.floor(s/60)+":"+Math.floor(s%60).toString().padStart(2,"0"); }
+
+playBtn.addEventListener("click", async () => {
+  if (tocando) { audio.pause(); estadoPlay(false); }
+  else { try { await audio.play(); estadoPlay(true); } catch(e){} }
+});
+audio.addEventListener("timeupdate", () => {
+  const p = audio.currentTime / audio.duration * 100;
+  progressBar.style.width = (isFinite(p) ? p : 0) + "%";
+  timeDisplay.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+});
+progress.addEventListener("click", e => {
+  const r = progress.getBoundingClientRect(), f = (e.clientX - r.left) / r.width;
+  if (isFinite(audio.duration)) audio.currentTime = f * audio.duration;
+});
+
+/* ============================================================
+   💌 CARTA CON EFECTO MÁQUINA DE ESCRIBIR
+   ============================================================ */
+const modal = document.getElementById("modalCarta"),
+      textoCarta = document.getElementById("textoCarta"),
+      firmaCarta = document.getElementById("firmaCarta");
+let escribiendo = null;
+
+document.getElementById("btnCarta").addEventListener("click", () => {
+  modal.classList.add("abierta");
+  textoCarta.textContent = ""; firmaCarta.textContent = "";
+  clearInterval(escribiendo);
+  let i = 0;
+  escribiendo = setInterval(() => {
+    textoCarta.textContent += CONFIG.carta[i++] || "";
+    if (i >= CONFIG.carta.length) {
+      clearInterval(escribiendo);
+      firmaCarta.textContent = CONFIG.firma;
+    }
+  }, 34);
+});
+document.getElementById("cerrarCarta").addEventListener("click", () => { modal.classList.remove("abierta"); clearInterval(escribiendo); });
+modal.addEventListener("click", e => { if (e.target === modal) { modal.classList.remove("abierta"); clearInterval(escribiendo); } });
+
+/* ============================================================
+   🐱 STICKERS FLOTANTES + BURBUJAS
+   ============================================================ */
+const posiciones = [
+  {left:"4%",  top:"16%", dur:"3.6s"},
+  {right:"5%", top:"20%", dur:"4.4s"},
+  {left:"6%",  bottom:"22%", dur:"5s"},
+  {right:"7%", bottom:"26%", dur:"4s"}
+];
+const coloresKitty = [["#ff5aa7","#ff2e9a"],["#b388ff","#7c4dff"],["#ffd1ec","#ff6bd6"],["#8df0ff","#38b6ff"]];
+const burbuja = document.createElement("div");
+burbuja.className = "burbuja"; document.body.appendChild(burbuja);
+let burbujaTimer = null;
+
+posiciones.forEach((pos, i) => {
+  const el = document.createElement("div");
+  el.className = "sticker";
+  el.innerHTML = kittySVG(...coloresKitty[i % coloresKitty.length]);
+  Object.assign(el.style, pos); el.style.setProperty("--dur", pos.dur);
+  el.addEventListener("click", () => {
+    const frase = CONFIG.frasesKitty[Math.floor(Math.random() * CONFIG.frasesKitty.length)];
+    burbuja.textContent = frase;
+    const r = el.getBoundingClientRect();
+    burbuja.style.left = Math.min(Math.max(r.left + r.width/2 - 115, 8), innerWidth - 238) + "px";
+    burbuja.style.top = Math.max(r.top - 92, 8) + "px";
+    burbuja.classList.add("visible");
+    clearTimeout(burbujaTimer);
+    burbujaTimer = setTimeout(() => burbuja.classList.remove("visible"), 2600);
+    ráfagaCorazones(r.left + r.width/2, r.top, 6);
+  });
+  document.body.appendChild(el);
+});
+
+/* ============================================================
+   💖 CORAZONES QUE SUBEN (DOM)
+   ============================================================ */
+const EMOJIS = ["💖","💕","💗","💓","💘","❤️","🩷","💜"];
+function ráfagaCorazones(x, y, n = 8) {
+  for (let i = 0; i < n; i++) {
+    const h = document.createElement("div");
+    h.className = "corazon-up";
+    h.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    h.style.left = (x + (Math.random() - .5) * 90) + "px";
+    h.style.top = (y + (Math.random() - .5) * 30) + "px";
+    h.style.fontSize = (16 + Math.random() * 18) + "px";
+    h.style.animationDuration = (2.2 + Math.random() * 2) + "s";
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 4500);
+  }
+}
+document.getElementById("btnLluvia").addEventListener("click", () => {
+  let veces = 0;
+  const iv = setInterval(() => {
+    ráfagaCorazones(Math.random() * innerWidth, innerHeight - 40, 4);
+    if (++veces > 14) clearInterval(iv);
+  }, 180);
+});
+
+/* ============================================================
+   🌌 ESCENA 3D (three.js)
+   ============================================================ */
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0018);
+scene.fog = new THREE.FogExp2(0x0a0018, 0.0011);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 6000);
+let targetDist = 300, currentDist = 380, rotX = .25, rotY = 0;
+
+/* --- textura corazón para partículas --- */
+function texturaCorazon(color = "#ff4fa0") {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d");
+  x.translate(32, 34); x.scale(1.15, 1.15);
+  x.beginPath();
+  x.moveTo(0, 10);
+  x.bezierCurveTo(-16, -6, -8, -20, 0, -10);
+  x.bezierCurveTo(8, -20, 16, -6, 0, 10);
+  x.closePath();
+  x.shadowColor = color; x.shadowBlur = 12; x.fillStyle = color; x.fill();
+  return new THREE.CanvasTexture(c);
+}
+function texturaBrillo() {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d");
+  const g = x.createRadialGradient(32, 32, 2, 32, 32, 30);
+  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.4, "rgba(255,200,240,.6)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+/* --- galaxia espiral rosa/lila --- */
+(function galaxiaEspiral() {
+  const N = 9000, brazos = 4;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  const paleta = [new THREE.Color("#ff6bd6"), new THREE.Color("#b388ff"), new THREE.Color("#7cc7ff"), new THREE.Color("#ffd1ec")];
+  for (let i = 0; i < N; i++) {
+    const brazo = i % brazos;
+    const r = 60 + Math.pow(Math.random(), 1.6) * 620;
+    const ang = (brazo / brazos) * Math.PI * 2 + r * 0.0075 + (Math.random() - .5) * .55;
+    const disp = (Math.random() - .5) * (36 + r * .07);
+    pos[i*3]   = Math.cos(ang) * r + disp * (Math.random() - .5);
+    pos[i*3+1] = (Math.random() - .5) * (18 + r * .05);
+    pos[i*3+2] = Math.sin(ang) * r + disp * (Math.random() - .5);
+    const c = paleta[Math.floor(Math.random() * paleta.length)].clone();
+    c.multiplyScalar(.55 + Math.random() * .45);
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 2.6, map: texturaBrillo(), vertexColors: true, transparent: true,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  window._galaxia = new THREE.Points(geo, mat);
+  scene.add(window._galaxia);
+})();
+
+/* --- estrellas lejanas --- */
+(function estrellas(n = 2500, R = 3200) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const r = R * (.4 + .6 * Math.random()), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+    pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.cos(p); pos[i*3+2] = r * Math.sin(p) * Math.sin(t);
+  }
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.4, color: 0xffffff, transparent: true, opacity: .8, depthWrite: false })));
+})();
+
+/* --- corazón central de partículas --- */
+const corazonGrupo = new THREE.Group();
+(function corazonParticulas() {
+  const N = 900;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const t = Math.random() * Math.PI * 2;
+    const esc = 2.6 * (0.75 + Math.random() * 0.3);
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+    pos[i*3] = x * esc + (Math.random() - .5) * 5;
+    pos[i*3+1] = y * esc + (Math.random() - .5) * 5;
+    pos[i*3+2] = (Math.random() - .5) * 14;
+  }
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 4.5, map: texturaCorazon(), color: 0xff4fa0, transparent: true,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  corazonGrupo.add(new THREE.Points(geo, mat));
+})();
+scene.add(corazonGrupo);
+
+/* --- halo central --- */
+function texturaHalo(t = "255,120,215", m = "160,80,255") {
+  const c = document.createElement("canvas"); c.width = c.height = 512;
+  const x = c.getContext("2d");
+  const g = x.createRadialGradient(256, 256, 20, 256, 256, 250);
+  g.addColorStop(0, `rgba(${t},.85)`); g.addColorStop(.5, `rgba(${m},.35)`); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(c);
+}
+const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaHalo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+halo.scale.set(420, 420, 1);
+scene.add(halo);
+
+/* --- texto central --- */
+function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w = 1024, h = 256) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d");
+  x.font = `bold ${fs}px 'Segoe UI', Arial`;
+  x.textAlign = "center"; x.textBaseline = "middle";
+  x.fillStyle = color; x.shadowColor = glow; x.shadowBlur = 45;
+  x.fillText(txt, w/2, h/2);
+  x.shadowBlur = 18; x.fillText(txt, w/2, h/2);
+  return new THREE.CanvasTexture(c);
+}
+const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(CONFIG.mensajeCentral, 90), transparent: true, depthWrite: false }));
+textoCentro.scale.set(130, 32, 1); textoCentro.renderOrder = 999;
+scene.add(textoCentro);
+const nombreCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(CONFIG.nombre, 76, "#fff", "#b388ff"), transparent: true, depthWrite: false }));
+nombreCentro.scale.set(110, 27, 1); nombreCentro.position.y = -34; nombreCentro.renderOrder = 999;
+scene.add(nombreCentro);
+
+/* --- frases orbitando --- */
+const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
+const grupoFrases = new THREE.Group();
+scene.add(grupoFrases);
+const FRASES = [];
+for (let v = 0; v < 4; v++) FRASES.push(...CONFIG.frases);
+FRASES.forEach((f, i) => {
+  const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length], 640, 128);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(52, 11, 1);
+  const phi = Math.acos(2 * Math.random() - 1), theta = Math.random() * Math.PI * 2, r = 165 + Math.random() * 150;
+  sp.position.setFromSphericalCoords(r, phi, theta);
+  sp.userData = { phi, theta, r, vel: .0008 + Math.random() * .0012, fase: Math.random() * Math.PI * 2 };
+  grupoFrases.add(sp);
+});
+
+/* --- estrellas fugaces --- */
+const fugaces = [];
+function lanzarFugaz() {
+  const geo = new THREE.BufferGeometry();
+  const n = 28, pos = new Float32Array(n * 3);
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ size: 3, map: texturaBrillo(), color: 0xfff4ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const p = new THREE.Points(geo, mat);
+  const inicio = new THREE.Vector3((Math.random()-.5)*1600, 350 + Math.random()*350, (Math.random()-.5)*1600);
+  const dir = new THREE.Vector3((Math.random()-.5)*2, -1, (Math.random()-.5)*2).normalize();
+  p.userData = { inicio, dir, t: 0 };
+  scene.add(p); fugaces.push(p);
+}
+setInterval(() => { if (fugaces.length < 4) lanzarFugaz(); }, 2800);
+
+/* --- controles: arrastrar / rueda / pellizco --- */
+let arrastrando = false, lx = 0, ly = 0, seMovio = false;
+function abajo(e){ arrastrando = true; seMovio = false; const t = e.touches ? e.touches[0] : e; lx = t.clientX; ly = t.clientY; }
+function mueve(e){
+  if (!arrastrando) return;
+  const t = e.touches ? e.touches[0] : e;
+  const dx = (t.clientX - lx) / innerWidth, dy = (t.clientY - ly) / innerHeight;
+  if (Math.abs(dx) + Math.abs(dy) > .004) seMovio = true;
+  rotY -= dx * 3.2; rotX = Math.max(-1.25, Math.min(1.25, rotX - dy * 2.4));
+  lx = t.clientX; ly = t.clientY;
+}
+function arriba(e){
+  if (arrastrando && !seMovio && e.target === canvas) {
+    const t = (e.changedTouches ? e.changedTouches[0] : e);
+    ráfagaCorazones(t.clientX, t.clientY, 7);
+  }
+  arrastrando = false;
+}
+addEventListener("mousedown", abajo); addEventListener("mousemove", mueve); addEventListener("mouseup", arriba);
+addEventListener("touchstart", abajo, { passive: true }); addEventListener("touchmove", mueve, { passive: true }); addEventListener("touchend", arriba, { passive: true });
+addEventListener("wheel", e => { targetDist += e.deltaY * .3; targetDist = Math.max(150, Math.min(900, targetDist)); }, { passive: true });
+let pellizco = 0;
+addEventListener("touchmove", e => {
+  if (e.touches && e.touches.length === 2) {
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    if (pellizco) { targetDist += (pellizco - d) * .6; targetDist = Math.max(150, Math.min(900, targetDist)); }
+    pellizco = d;
+  }
+}, { passive: false });
+addEventListener("touchend", () => { pellizco = 0; }, { passive: true });
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* --- bucle de animación --- */
+let t = 0;
+(function anima() {
+  requestAnimationFrame(anima);
+  t += .01;
+
+  if (window._galaxia) window._galaxia.rotation.y += .0006;
+
+  const lat = 1 + .09 * Math.pow(Math.abs(Math.sin(t * 2.4)), 3);
+  corazonGrupo.scale.set(lat, lat, lat);
+  corazonGrupo.rotation.y = Math.sin(t * .4) * .35;
+
+  halo.scale.set(420 * (1 + .04 * Math.sin(t * .8)), 420 * (1 + .04 * Math.sin(t * .8)), 1);
+  textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
+  nombreCentro.position.y = -34 + Math.sin(t * 1.3) * 2.5;
+
+  grupoFrases.children.forEach(sp => {
+    const u = sp.userData;
+    u.theta += u.vel;
+    sp.position.setFromSphericalCoords(u.r + Math.sin(t + u.fase) * 6, u.phi, u.theta);
+    sp.material.opacity = .65 + .35 * Math.sin(t * 1.6 + u.fase);
+  });
+
+  for (let i = fugaces.length - 1; i >= 0; i--) {
+    const f = fugaces[i]; f.userData.t += 1;
+    const pos = f.geometry.attributes.position.array;
+    for (let j = 27; j > 0; j--) { pos[j*3] = pos[(j-1)*3]; pos[j*3+1] = pos[(j-1)*3+1]; pos[j*3+2] = pos[(j-1)*3+2]; }
+    const head = f.userData.inicio.clone().addScaledVector(f.userData.dir, f.userData.t * 9);
+    pos[0] = head.x; pos[1] = head.y; pos[2] = head.z;
+    f.geometry.attributes.position.needsUpdate = true;
+    f.material.opacity = Math.max(0, 1 - f.userData.t / 110);
+    if (f.userData.t > 120) { scene.remove(f); fugaces.splice(i, 1); }
+  }
+
+  currentDist += (targetDist - currentDist) * .06;
+  const cx = Math.cos(rotX), sx = Math.sin(rotX), cy = Math.cos(rotY), sy = Math.sin(rotY);
+  camera.position.set(currentDist * sy * cx, currentDist * sx, currentDist * cy * cx);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
