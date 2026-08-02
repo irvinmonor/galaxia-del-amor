@@ -1,4 +1,4 @@
-// GET /api/videos — lista pública de videos guardados en Backblaze B2
+// GET /api/archivos?carpeta=videos|fotos|fondos — lista pública desde Backblaze B2
 let cache = { t: 0, auth: null };
 
 async function b2Auth() {
@@ -16,28 +16,30 @@ async function b2Auth() {
 
 export default async function handler(req, res) {
   try {
-    if (!process.env.B2_KEY_ID) return res.status(200).json({ videos: [], aviso: "B2 sin configurar" });
+    const carpeta = String(req.query.carpeta || "videos").replace(/[^a-z]/g, "");
+    if (!process.env.B2_KEY_ID) return res.status(200).json({ archivos: [], videos: [], aviso: "B2 sin configurar" });
     const a = await b2Auth();
     const r = await fetch(a.apiUrl + "/b2api/v2/b2_list_file_names", {
       method: "POST",
       headers: { Authorization: a.authorizationToken, "Content-Type": "application/json" },
-      body: JSON.stringify({ bucketId: process.env.B2_BUCKET_ID, maxFileCount: 1000, prefix: "videos/" })
+      body: JSON.stringify({ bucketId: process.env.B2_BUCKET_ID, maxFileCount: 1000, prefix: carpeta + "/" })
     });
     const j = await r.json();
     if (!r.ok) throw new Error("B2 list fallo: " + JSON.stringify(j));
     const base = a.downloadUrl + "/file/" + process.env.B2_BUCKET_NAME + "/";
-    const videos = (j.files || [])
-      .filter(f => f.action === "upload")
+    const archivos = (j.files || [])
+      .filter(f => f.action === "upload" && !f.fileName.endsWith("/"))
       .sort((x, y) => y.uploadTimestamp - x.uploadTimestamp)
       .map(f => ({
-        nombre: f.fileName.replace(/^videos\//, "").replace(/^\d+-/, "").replace(/\.[^.]+$/, "").replace(/-/g, " "),
+        nombre: f.fileName.replace(carpeta + "/", "").replace(/^\d+-/, "").replace(/\.[^.]+$/, "").replace(/-/g, " "),
         url: base + f.fileName.split("/").map(encodeURIComponent).join("/"),
         tipo: f.contentType || "",
+        tam: f.contentLength || 0,
         fileName: f.fileName,
         fileId: f.fileId
       }));
     res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
-    res.status(200).json({ videos });
+    res.status(200).json({ archivos, videos: archivos });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message || e) });
   }

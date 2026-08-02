@@ -135,8 +135,9 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       <div class="tarjeta">
         <h2>🎬 Videos del modo Netflix</h2>
         <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 10px">
-          Se guardan en <b>Backblaze B2</b> (sin límite de tamaño) y se ven con reproductor Vidstack estilo Netflix.
+          Se guardan en <b>Backblaze B2</b> y se ven con reproductor Vidstack estilo Netflix.
           El nombre del archivo se usa como título. Formatos: mp4, webm, mov, mkv, avi, m3u8, mpd y más.
+          Los mayores de 200 MB se suben por partes automáticamente (hasta 10 TB por archivo).
         </p>
         <div id="zonaDropVideo">Arrastra tus videos aquí o haz clic para elegirlos<br><small>(mp4, webm, mov, mkv… varios a la vez)</small></div>
         <input type="file" id="inputVideos" accept="video/*,.mkv,.avi,.m3u8,.mpd,.ogv,.3gp,.flv,.wmv" multiple class="oculto">
@@ -150,7 +151,11 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     <div id="secGalaxia" class="oculto">
     <div class="tarjeta">
       <h2>📸 Fotos de la galaxia</h2>
-      <div id="zonaDrop">Arrastra tus fotos aquí o haz clic para elegirlas<br><small>(puedes subir varias a la vez)</small></div>
+      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 10px">
+        Se convierten solas a <b>WebP</b> antes de subirse (cargan mucho más rápido) y van a Backblaze.
+        Sin límite de cantidad — puedes seleccionar todas las que quieras.
+      </p>
+      <div id="zonaDrop">Arrastra tus fotos aquí o haz clic para elegirlas<br><small>(las que quieras, se optimizan solas)</small></div>
       <input type="file" id="inputFotos" accept="image/*" multiple class="oculto">
       <progress id="barraSubida" max="100" value="0" class="oculto"></progress>
       <div id="gridFotos"></div>
@@ -345,42 +350,59 @@ zona.addEventListener("drop", e => { e.preventDefault(); zona.classList.remove("
 inputFotos.addEventListener("change", () => subir(inputFotos.files));
 
 async function subir(files) {
-  const lista = [...files].filter(f => f.type.startsWith("image/"));
-  if (!lista.length) return;
+  const brutas = [...files].filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif|tiff?)$/i.test(f.name));
+  if (!brutas.length) return;
+
+  const cont = $("contadorFotos");
   barra.classList.remove("oculto"); barra.value = 0;
-  let ok = 0;
-  for (let i = 0; i < lista.length; i++) {
-    const f = lista[i];
-    const nombre = Date.now() + "-" + i + "-" + f.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
-    const { error } = await sb.storage.from("fotos").upload(nombre, f, { cacheControl: "3600" });
-    if (!error) ok++;
-    barra.value = Math.round(((i + 1) / lista.length) * 100);
+
+  // 1) convertir todo a WebP antes de subir
+  const lista = [];
+  let ahorro = 0;
+  for (let i = 0; i < brutas.length; i++) {
+    cont.textContent = "Optimizando a WebP… " + (i + 1) + " de " + brutas.length;
+    const conv = await aWebp(brutas[i]);
+    ahorro += brutas[i].size - conv.size;
+    lista.push(conv);
   }
+
+  // 2) subir en paralelo a Backblaze
+  const { ok, errores } = await subirLote(lista, "fotos", barra, cont);
+
   barra.classList.add("oculto");
   inputFotos.value = "";
-  aviso(ok + " foto(s) subida(s) 📸 ¡Ya giran en la galaxia!");
+  const nota = ahorro > 0 ? " (" + pesoLegible(ahorro) + " ahorrados en WebP)" : "";
+  if (errores.length) aviso("Subidas " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
+  else aviso(ok + " foto(s) subida(s) 📸" + nota + " ¡Ya giran en la galaxia!");
   cargarFotos();
 }
 
 async function cargarFotos() {
-  const { data, error } = await sb.storage.from("fotos").list("", { limit: 300, sortBy: { column: "created_at", order: "desc" } });
-  if (error) return aviso("No se pudieron cargar las fotos: " + error.message, "error");
+  let j;
+  try { j = await (await fetch("/api/archivos?carpeta=fotos")).json(); }
+  catch (e) { return aviso("No se pudieron cargar las fotos: " + e.message, "error"); }
+  if (j.error) return aviso("Backblaze: " + j.error, "error");
   grid.innerHTML = "";
-  const archivos = (data || []).filter(f => f.id && f.name && !f.name.startsWith("."));
-  archivos.forEach(f => {
-    const url = sb.storage.from("fotos").getPublicUrl(f.name).data.publicUrl;
+  const fotos = j.archivos || [];
+  fotos.forEach(f => {
     const div = document.createElement("div");
     div.className = "foto";
-    div.innerHTML = `<img src="${url}" loading="lazy" alt=""><button title="Borrar">🗑</button>`;
+    div.innerHTML = `<img src="${f.url}" loading="lazy" alt=""><button title="Borrar">🗑</button>`;
     div.querySelector("button").addEventListener("click", async () => {
       if (!confirm("¿Borrar esta foto de la galaxia?")) return;
-      const { error } = await sb.storage.from("fotos").remove([f.name]);
-      if (error) return aviso("No se pudo borrar: " + error.message, "error");
+      const tok = await tokenSesion();
+      const r = await fetch("/api/borrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+        body: JSON.stringify({ fileName: f.fileName, fileId: f.fileId })
+      });
+      const res = await r.json();
+      if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error");
       cargarFotos();
     });
     grid.appendChild(div);
   });
-  $("contadorFotos").textContent = archivos.length ? archivos.length + " foto(s) en la galaxia" : "Aún no hay fotos — sube las primeras ✨";
+  $("contadorFotos").textContent = fotos.length ? fotos.length + " foto(s) en la galaxia" : "Aún no hay fotos — sube las primeras ✨";
 }
 
 /* ---------- VIDEOS (modo Netflix) ---------- */
@@ -392,35 +414,203 @@ zonaV.addEventListener("dragleave", () => zonaV.classList.remove("encima"));
 zonaV.addEventListener("drop", e => { e.preventDefault(); zonaV.classList.remove("encima"); subirVideos(e.dataTransfer.files); });
 inputVideos.addEventListener("change", () => subirVideos(inputVideos.files));
 
+/* Límites de Backblaze B2:
+   · subida simple  → hasta 5 GB por archivo
+   · multiparte     → hasta 10 TB por archivo (se usa solo, en trozos de 100 MB)  */
+const LIMITE_SIMPLE = 5 * 1024 * 1024 * 1024;
+const LIMITE_B2 = 10 * 1024 * 1024 * 1024 * 1024;
+const UMBRAL_MULTIPARTE = 200 * 1024 * 1024;   // a partir de 200 MB va por partes
+const SUBIDAS_PARALELAS = 3;   // cada hilo pide su propia upload URL (regla de B2)
+const PARTES_PARALELAS = 2;
+const MAX_LADO_FOTO = 2400;    // px: se reduce si la foto es más grande
+
+function pesoLegible(b) {
+  if (b >= 1073741824) return (b / 1073741824).toFixed(2) + " GB";
+  if (b >= 1048576) return (b / 1048576).toFixed(1) + " MB";
+  return Math.max(1, Math.round(b / 1024)) + " KB";
+}
+
+/* Convierte cualquier imagen a WebP (redimensionando si es enorme).
+   Si el navegador no puede (HEIC, GIF animado…), devuelve el original. */
+function aWebp(file, calidad = 0.85) {
+  return new Promise(resolve => {
+    if (!file.type.startsWith("image/") || file.type === "image/webp" || file.type === "image/gif") return resolve(file);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width: w, height: h } = img;
+      const escala = Math.min(1, MAX_LADO_FOTO / Math.max(w, h));
+      w = Math.round(w * escala); h = Math.round(h * escala);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      c.toBlob(blob => {
+        if (!blob || blob.size >= file.size) return resolve(file);   // si no mejora, deja el original
+        const nombre = file.name.replace(/\.[^.]+$/, "") + ".webp";
+        resolve(new File([blob], nombre, { type: "image/webp" }));
+      }, "image/webp", calidad);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 async function tokenSesion() {
   const { data } = await sb.auth.getSession();
   return data.session ? data.session.access_token : "";
 }
 
-// Sube un archivo directo a Backblaze B2 con barra de progreso real
-async function subirAB2(file, carpeta, barra) {
-  const tok = await tokenSesion();
-  const r = await fetch("/api/subir", { headers: { Authorization: "Bearer " + tok } });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error || "No se pudo autorizar la subida");
-  const limpio = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
-  const ruta = carpeta + "/" + Date.now() + "-" + limpio;
-  const sha = await crypto.subtle.digest("SHA-1", await file.arrayBuffer())
-    .then(b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""));
+/* Sube un archivo directo a Backblaze B2. onProgreso recibe 0-100.
+   Reintenta con una URL nueva si B2 responde 429/50x (recomendación oficial). */
+async function sha1De(blob) {
+  const b = await crypto.subtle.digest("SHA-1", await blob.arrayBuffer());
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
 
-  await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", j.uploadUrl);
-    xhr.setRequestHeader("Authorization", j.token);
-    xhr.setRequestHeader("X-Bz-File-Name", encodeURIComponent(ruta));
-    xhr.setRequestHeader("Content-Type", file.type || "b2/x-auto");
-    xhr.setRequestHeader("X-Bz-Content-Sha1", sha);
-    if (barra) xhr.upload.onprogress = e => { if (e.lengthComputable) barra.value = Math.round(e.loaded / e.total * 100); };
-    xhr.onload = () => (xhr.status === 200 ? resolve() : reject(new Error("B2 " + xhr.status + ": " + xhr.responseText)));
-    xhr.onerror = () => reject(new Error("Fallo de red al subir"));
-    xhr.send(file);
-  });
-  return j.base + ruta.split("/").map(encodeURIComponent).join("/");
+function rutaLimpia(file, carpeta) {
+  const limpio = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+  return carpeta + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "-" + limpio;
+}
+
+/* Archivos grandes: se parten en trozos y se suben con la API multiparte de B2 (hasta 10 TB) */
+async function subirGrandeAB2(file, carpeta, onProgreso) {
+  const ruta = rutaLimpia(file, carpeta);
+  const tok = await tokenSesion();
+  const ini = await fetch("/api/subir?accion=iniciar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+    body: JSON.stringify({ fileName: ruta, contentType: file.type || "b2/x-auto" })
+  }).then(r => r.json());
+  if (ini.error) throw new Error(ini.error);
+
+  const tamParte = Math.max(ini.tamMinParte || 5000000, ini.tamParte || 100000000);
+  const total = Math.ceil(file.size / tamParte);
+  const sha1s = new Array(total);
+  const hechos = new Array(total).fill(0);
+  const pintar = () => onProgreso && onProgreso(hechos.reduce((a, b) => a + b, 0) / file.size * 100);
+
+  let siguiente = 0, fallo = null;
+  async function trabajador() {
+    while (siguiente < total && !fallo) {
+      const i = siguiente++;
+      const trozo = file.slice(i * tamParte, Math.min((i + 1) * tamParte, file.size));
+      try {
+        const sha = await sha1De(trozo);
+        let subido = false;
+        for (let intento = 0; intento < 4 && !subido; intento++) {
+          const t = await tokenSesion();
+          const u = await fetch("/api/subir?accion=parte&fileId=" + encodeURIComponent(ini.fileId), {
+            headers: { Authorization: "Bearer " + t }
+          }).then(r => r.json());
+          if (u.error) throw new Error(u.error);
+          try {
+            await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open("POST", u.uploadUrl);
+              xhr.setRequestHeader("Authorization", u.token);
+              xhr.setRequestHeader("X-Bz-Part-Number", String(i + 1));
+              xhr.setRequestHeader("X-Bz-Content-Sha1", sha);
+              xhr.upload.onprogress = e => { if (e.lengthComputable) { hechos[i] = e.loaded; pintar(); } };
+              xhr.onload = () => (xhr.status === 200 ? resolve() : reject(Object.assign(new Error("B2 " + xhr.status), { status: xhr.status })));
+              xhr.onerror = () => reject(new Error("fallo de red"));
+              xhr.send(trozo);
+            });
+            subido = true;
+          } catch (e) {
+            const reintentable = !e.status || e.status === 429 || e.status >= 500;
+            if (!reintentable || intento === 3) throw e;
+            await new Promise(s => setTimeout(s, 700 * Math.pow(2, intento)));
+          }
+        }
+        sha1s[i] = sha; hechos[i] = trozo.size; pintar();
+      } catch (e) { fallo = e; }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(PARTES_PARALELAS, total) }, trabajador));
+
+  if (fallo) {
+    const t = await tokenSesion();
+    fetch("/api/subir?accion=cancelar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + t },
+      body: JSON.stringify({ fileId: ini.fileId })
+    }).catch(() => {});
+    throw fallo;
+  }
+
+  const t2 = await tokenSesion();
+  const fin = await fetch("/api/subir?accion=finalizar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + t2 },
+    body: JSON.stringify({ fileId: ini.fileId, sha1s })
+  }).then(r => r.json());
+  if (fin.error) throw new Error(fin.error);
+  return ini.base + ruta.split("/").map(encodeURIComponent).join("/");
+}
+
+async function subirAB2(file, carpeta, onProgreso, intentos = 4) {
+  if (file.size > LIMITE_B2) {
+    throw new Error("pesa " + pesoLegible(file.size) + ", el máximo por archivo es 10 TB");
+  }
+  if (file.size > UMBRAL_MULTIPARTE) return subirGrandeAB2(file, carpeta, onProgreso);
+
+  const ruta = rutaLimpia(file, carpeta);
+  const sha = await sha1De(file);
+
+  let ultimoError;
+  for (let intento = 0; intento < intentos; intento++) {
+    const tok = await tokenSesion();
+    const r = await fetch("/api/subir", { headers: { Authorization: "Bearer " + tok } });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "No se pudo autorizar la subida");
+    try {
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", j.uploadUrl);
+        xhr.setRequestHeader("Authorization", j.token);
+        xhr.setRequestHeader("X-Bz-File-Name", encodeURIComponent(ruta));
+        xhr.setRequestHeader("Content-Type", file.type || "b2/x-auto");
+        xhr.setRequestHeader("X-Bz-Content-Sha1", sha);
+        if (onProgreso) xhr.upload.onprogress = e => { if (e.lengthComputable) onProgreso(e.loaded / e.total * 100); };
+        xhr.onload = () => (xhr.status === 200 ? resolve() : reject(Object.assign(new Error("B2 " + xhr.status), { status: xhr.status })));
+        xhr.onerror = () => reject(new Error("fallo de red"));
+        xhr.send(file);
+      });
+      return j.base + ruta.split("/").map(encodeURIComponent).join("/");
+    } catch (e) {
+      ultimoError = e;
+      const reintentable = !e.status || e.status === 429 || e.status >= 500;
+      if (!reintentable || intento === intentos - 1) break;
+      await new Promise(s => setTimeout(s, 700 * Math.pow(2, intento)));   // espera progresiva
+    }
+  }
+  throw ultimoError;
+}
+
+/* Sube una lista en paralelo (3 a la vez) actualizando una barra global */
+async function subirLote(lista, carpeta, barra, etiqueta) {
+  const progresos = new Array(lista.length).fill(0);
+  const pintar = () => { barra.value = Math.round(progresos.reduce((a, b) => a + b, 0) / lista.length); };
+  let siguiente = 0, ok = 0;
+  const errores = [];
+
+  async function trabajador() {
+    while (siguiente < lista.length) {
+      const i = siguiente++;
+      const f = lista[i];
+      try {
+        await subirAB2(f, carpeta, p => { progresos[i] = p; pintar(); });
+        progresos[i] = 100; pintar(); ok++;
+      } catch (e) {
+        progresos[i] = 100; pintar();
+        errores.push(f.name + " (" + e.message + ")");
+      }
+      if (etiqueta) etiqueta.textContent = "Subiendo… " + (ok + errores.length) + " de " + lista.length;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(SUBIDAS_PARALELAS, lista.length) }, trabajador));
+  return { ok, errores };
 }
 
 async function subirVideos(files) {

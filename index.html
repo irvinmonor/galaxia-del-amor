@@ -3,9 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Para Jeniffer 💖 Nuestra Galaxia de Amor</title>
-<meta name="description" content="Una galaxia hecha con amor, solo para Jeniffer Bragg.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💖</text></svg>">
+<title>Jeniffer Bragg 💖</title>
+<meta name="description" content="Sitio dedicado al amor de mi vida: Jeniffer Bragg.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0018">
+
+<!-- vista previa al compartir (WhatsApp, Facebook, Telegram…) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Jeniffer Bragg">
+<meta property="og:title" content="Jeniffer Bragg 💖">
+<meta property="og:description" content="Sitio dedicado al amor de mi vida: Jeniffer Bragg.">
+<meta property="og:url" content="https://www.jenifferbragg.com/">
+<meta property="og:image" content="https://www.jenifferbragg.com/og.jpg">
+<meta property="og:image:secure_url" content="https://www.jenifferbragg.com/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Jeniffer Bragg">
+<meta property="og:locale" content="es_MX">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Jeniffer Bragg 💖">
+<meta name="twitter:description" content="Sitio dedicado al amor de mi vida: Jeniffer Bragg.">
+<meta name="twitter:image" content="https://www.jenifferbragg.com/og.jpg">
 <style>
 :root{
   --rosa:#ff6bd6; --rosa2:#ff2e9a; --lila:#b388ff; --fondo:#0a0018;
@@ -325,12 +346,16 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
     <div class="tile tile-n" id="tileNetflix">
       <div class="tile-cara">
         <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="22,6 40,6 40,114 22,114" fill="#e50914"/>
-          <polygon points="60,6 78,6 78,114 60,114" fill="#e50914"/>
-          <polygon points="22,6 40,6 78,114 60,114" fill="#b00710"/>
+          <defs>
+            <linearGradient id="jSombra" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#8f050d"/><stop offset="1" stop-color="#e50914"/>
+            </linearGradient>
+          </defs>
+          <path d="M54 6 H78 V80 Q78 114 46 114 Q18 114 18 86 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="#e50914"/>
+          <path d="M54 6 H66 V80 Q66 100 47 100 Q40 100 40 92 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="url(#jSombra)" opacity=".75"/>
         </svg>
       </div>
-      <span>Nuestra Galaxia</span>
+      <span>Nuestros videos</span>
     </div>
     <div class="tile tile-q" id="tileSorpresa">
       <div class="tile-cara">
@@ -366,9 +391,13 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 <!-- ======= ANIMACIÓN N (estilo intro de Netflix) ======= -->
 <div id="nOverlay">
   <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
-    <polygon points="22,6 40,6 40,114 22,114" fill="#e50914"/>
-    <polygon points="60,6 78,6 78,114 60,114" fill="#e50914"/>
-    <polygon points="22,6 40,6 78,114 60,114" fill="#b00710"/>
+    <defs>
+      <linearGradient id="jSombra2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8f050d"/><stop offset="1" stop-color="#e50914"/>
+      </linearGradient>
+    </defs>
+    <path d="M54 6 H78 V80 Q78 114 46 114 Q18 114 18 86 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="#e50914"/>
+    <path d="M54 6 H66 V80 Q66 100 47 100 Q40 100 40 92 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="url(#jSombra2)" opacity=".75"/>
   </svg>
 </div>
 
@@ -478,29 +507,27 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
     const cred = window.GALAXIA_SUPABASE;
     if (cred && cred.url && cred.url.indexOf("https") === 0 && window.supabase) {
       const sb = window.supabase.createClient(cred.url, cred.anonKey);
-      const [cfgRes, fotosRes, sesRes] = await Promise.all([
+      const [cfgRes, sesRes] = await Promise.all([
         sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle(),
-        sb.storage.from("fotos").list("", { limit: 300, sortBy: { column: "created_at", order: "asc" } }),
         sb.auth.getSession()
       ]);
       ES_ADMIN = !!(sesRes.data && sesRes.data.session);
       if (cfgRes.data && cfgRes.data.data && Object.keys(cfgRes.data.data).length) {
         CONFIG = Object.assign({}, DEFAULTS, cfgRes.data.data);
       }
-      if (fotosRes.data) {
-        FOTOS = fotosRes.data
-          .filter(f => f.id && f.name && !f.name.startsWith("."))
-          .map(f => sb.storage.from("fotos").getPublicUrl(f.name).data.publicUrl);
-      }
     }
   } catch (e) {
     console.warn("Supabase no disponible, usando valores locales:", e);
   }
   try {
-    const r = await fetch("/api/videos");
-    if (r.ok) { const j = await r.json(); VIDEOS = j.videos || []; }
+    const [rv, rf] = await Promise.all([
+      fetch("/api/archivos?carpeta=videos"),
+      fetch("/api/archivos?carpeta=fotos")
+    ]);
+    if (rv.ok) VIDEOS = (await rv.json()).archivos || [];
+    if (rf.ok) FOTOS = ((await rf.json()).archivos || []).map(f => f.url);
   } catch (e) {
-    console.warn("No se pudieron cargar los videos:", e);
+    console.warn("No se pudieron cargar los archivos:", e);
   }
   iniciar();
 })();
