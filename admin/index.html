@@ -379,7 +379,7 @@ async function subir(files) {
 
 async function cargarFotos() {
   let j;
-  try { j = await (await fetch("/api/archivos?carpeta=fotos")).json(); }
+  try { j = await pedirJSON("/api/archivos?carpeta=fotos"); }
   catch (e) { return aviso("No se pudieron cargar las fotos: " + e.message, "error"); }
   if (j.error) return aviso("Backblaze: " + j.error, "error");
   grid.innerHTML = "";
@@ -461,6 +461,20 @@ async function tokenSesion() {
   return data.session ? data.session.access_token : "";
 }
 
+/* Pide JSON y explica el problema en vez de reventar con "is not valid JSON" */
+async function pedirJSON(url, opciones) {
+  const r = await fetch(url, opciones);
+  const txt = await r.text();
+  let j;
+  try { j = JSON.parse(txt); }
+  catch (e) {
+    if (r.status === 404) throw new Error("la función " + url.split("?")[0] + " no existe en el servidor (¿falta desplegar?)");
+    throw new Error("respuesta inesperada del servidor (" + r.status + ")");
+  }
+  if (!r.ok) throw new Error(j.error || ("error " + r.status));
+  return j;
+}
+
 /* Sube un archivo directo a Backblaze B2. onProgreso recibe 0-100.
    Reintenta con una URL nueva si B2 responde 429/50x (recomendación oficial). */
 async function sha1De(blob) {
@@ -477,12 +491,11 @@ function rutaLimpia(file, carpeta) {
 async function subirGrandeAB2(file, carpeta, onProgreso) {
   const ruta = rutaLimpia(file, carpeta);
   const tok = await tokenSesion();
-  const ini = await fetch("/api/subir?accion=iniciar", {
+  const ini = await pedirJSON("/api/subir?accion=iniciar", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
     body: JSON.stringify({ fileName: ruta, contentType: file.type || "b2/x-auto" })
-  }).then(r => r.json());
-  if (ini.error) throw new Error(ini.error);
+  });
 
   const tamParte = Math.max(ini.tamMinParte || 5000000, ini.tamParte || 100000000);
   const total = Math.ceil(file.size / tamParte);
@@ -500,10 +513,9 @@ async function subirGrandeAB2(file, carpeta, onProgreso) {
         let subido = false;
         for (let intento = 0; intento < 4 && !subido; intento++) {
           const t = await tokenSesion();
-          const u = await fetch("/api/subir?accion=parte&fileId=" + encodeURIComponent(ini.fileId), {
+          const u = await pedirJSON("/api/subir?accion=parte&fileId=" + encodeURIComponent(ini.fileId), {
             headers: { Authorization: "Bearer " + t }
-          }).then(r => r.json());
-          if (u.error) throw new Error(u.error);
+          });
           try {
             await new Promise((resolve, reject) => {
               const xhr = new XMLHttpRequest();
@@ -540,12 +552,11 @@ async function subirGrandeAB2(file, carpeta, onProgreso) {
   }
 
   const t2 = await tokenSesion();
-  const fin = await fetch("/api/subir?accion=finalizar", {
+  await pedirJSON("/api/subir?accion=finalizar", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + t2 },
     body: JSON.stringify({ fileId: ini.fileId, sha1s })
-  }).then(r => r.json());
-  if (fin.error) throw new Error(fin.error);
+  });
   return ini.base + ruta.split("/").map(encodeURIComponent).join("/");
 }
 
@@ -561,9 +572,7 @@ async function subirAB2(file, carpeta, onProgreso, intentos = 4) {
   let ultimoError;
   for (let intento = 0; intento < intentos; intento++) {
     const tok = await tokenSesion();
-    const r = await fetch("/api/subir", { headers: { Authorization: "Bearer " + tok } });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || "No se pudo autorizar la subida");
+    const j = await pedirJSON("/api/subir", { headers: { Authorization: "Bearer " + tok } });
     try {
       await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -631,11 +640,11 @@ async function subirVideos(files) {
 
 async function cargarVideos() {
   let j;
-  try { j = await (await fetch("/api/videos")).json(); }
+  try { j = await pedirJSON("/api/archivos?carpeta=videos"); }
   catch (e) { return aviso("No se pudieron cargar los videos: " + e.message, "error"); }
   if (j.error) return aviso("Backblaze: " + j.error, "error");
   gridV.innerHTML = "";
-  const vids = j.videos || [];
+  const vids = j.archivos || [];
   vids.forEach(v => {
     const div = document.createElement("div");
     div.className = "vid";
