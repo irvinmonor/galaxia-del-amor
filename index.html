@@ -1099,6 +1099,9 @@ fondoListo.then(() => {
   // se revela en el mismo fotograma: como las transiciones están congeladas,
   // el navegador pinta directo el estado final y no se ve el inicio
   document.body.classList.add("datos-listos");
+  // obliga a aplicar los estilos AHORA (aún sin transiciones); si no,
+  // al descongelarlas el inicio se desvanecería lentamente y se vería
+  void document.body.offsetHeight;
   setTimeout(() => document.body.classList.remove("restaurando"), 80);
 });
 
