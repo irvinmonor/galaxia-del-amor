@@ -204,6 +204,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
    ✏️  CONFIGURACIÓN — EDITA AQUÍ SIN MIEDO
    ============================================================ */
 const CONFIG = {
+  musicaActiva: false,                       // 🎵 pon en true para reactivar la canción y el reproductor
   nombre: "JENIFFER",                        // 💕 nombre de tu persona especial
   tituloIntro: "Para Ti, Jeniffer 💖",
   mensajeCentral: "TE AMO ❤️",
@@ -285,10 +286,14 @@ document.getElementById("kittyIntro").innerHTML = kittySVG();
 document.getElementById("tituloIntro").textContent = CONFIG.tituloIntro;
 
 const audio = document.getElementById("audio");
+if (!CONFIG.musicaActiva) document.getElementById("player").style.display = "none";
+
 document.getElementById("btnEntrar").addEventListener("click", async () => {
   document.getElementById("intro").classList.add("oculto");
   document.body.classList.add("iniciado");
-  try { await audio.play(); estadoPlay(true); } catch(e) { /* el usuario puede darle play manual */ }
+  if (CONFIG.musicaActiva) {
+    try { await audio.play(); estadoPlay(true); } catch(e) { /* el usuario puede darle play manual */ }
+  }
   setTimeout(() => document.getElementById("hint").classList.add("fuera"), 7000);
 });
 
