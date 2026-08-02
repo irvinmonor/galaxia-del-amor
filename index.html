@@ -547,6 +547,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 
 <!-- ======= BARRA SUPERIOR ======= -->
 <div id="topbar">
+  <div class="chip" id="btnInicioGalaxia">← Inicio</div>
   <div class="chip" id="btnCarta">💌 Léeme</div>
   <div class="chip" id="btnLluvia">💖 Lluvia de amor</div>
 </div>
@@ -761,7 +762,9 @@ if (CONFIG.musicaActiva && CONFIG.musicaUrl) audio.src = CONFIG.musicaUrl;
 else document.getElementById("player").style.display = "none";
 
 async function entrarGalaxia() {
-  recordarPantalla("galaxia");
+  // se guarda "inicio" a propósito: al recargar dentro de la galaxia
+  // deben volver a la portada, no quedarse en la sorpresa
+  recordarPantalla("inicio");
   document.getElementById("intro").classList.add("oculto");
   document.body.classList.add("iniciado");
   if (CONFIG.musicaActiva) {
@@ -1092,6 +1095,20 @@ function entrarJeniflix(conAnimacion) {
 }
 document.getElementById("tileNetflix").addEventListener("click", () => entrarJeniflix(true));
 
+/* --- salir de la galaxia y volver a la portada --- */
+document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
+  if (tocando) { audio.pause(); estadoPlay(false); }        // callar la música
+  modal.classList.remove("abierta");                        // cerrar la carta si estaba abierta
+  clearInterval(escribiendo);
+  burbuja.classList.remove("visible");                      // quitar la burbuja del gatito
+  document.getElementById("hint").classList.remove("fuera");
+  sinTransicion(() => {
+    document.body.classList.remove("iniciado");
+    document.getElementById("intro").classList.remove("oculto");
+  });
+  recordarPantalla("inicio");
+});
+
 /* --- cuadro sorpresa 🔒: la galaxia, bloqueada hasta el 12 --- */
 const tileSorpresa = document.getElementById("tileSorpresa");
 const desbloqueada = CONFIG.sorpresaActiva || ES_ADMIN;
@@ -1113,10 +1130,8 @@ modalSorpresa.addEventListener("click", e => { if (e.target === modalSorpresa) m
    (y sin transiciones) para que no se alcance a ver el inicio. */
 fondoListo.then(() => {
   sinTransicion(() => {
-    const p = pantallaGuardada();
-    if (p === "jeniflix") entrarJeniflix(false);
-    else if (p === "galaxia" && desbloqueada) entrarGalaxia();
-    else if (p === "galaxia") recordarPantalla("inicio");   // ya no tiene acceso
+    // solo Jeniflix se retoma; la galaxia siempre arranca desde la portada
+    if (pantallaGuardada() === "jeniflix") entrarJeniflix(false);
     document.body.classList.add("datos-listos");            // recién ahora se revela
   });
 });
