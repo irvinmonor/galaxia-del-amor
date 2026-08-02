@@ -947,22 +947,47 @@ function cargarScript(url) {
   });
 }
 
-/* pantalla completa, contemplando iPhone (que solo la permite sobre el <video>) */
+/* ============================================================
+   Pantalla completa según el equipo:
+   · PC, Mac, Android e iPad → pantalla completa del contenedor
+     (se conservan nuestros controles rojos estilo Netflix)
+   · iPhone → solo permite pantalla completa sobre el <video>,
+     y además exige que el video ya tenga datos cargados
+   ============================================================ */
+const pedirFS = playerVideo.requestFullscreen || playerVideo.webkitRequestFullscreen
+             || playerVideo.mozRequestFullScreen || playerVideo.msRequestFullscreen;
+const salirFS = document.exitFullscreen || document.webkitExitFullscreen
+             || document.mozCancelFullScreen || document.msExitFullscreen;
+const soloVideoFS = !pedirFS && !!vid.webkitEnterFullscreen;   // caso iPhone
+
 function entrarPantallaCompleta() {
-  const el = playerVideo;
-  try {
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (vid.webkitEnterFullscreen) vid.webkitEnterFullscreen();
-  } catch (e) {}
+  if (pedirFS) {
+    try {
+      const p = pedirFS.call(playerVideo);
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
+    return true;
+  }
+  return false;   // en iPhone se hará cuando el video tenga datos
 }
+
 function enPantallaCompleta() {
-  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  return !!(document.fullscreenElement || document.webkitFullscreenElement
+         || document.mozFullScreenElement || document.msFullscreenElement
+         || vid.webkitDisplayingFullscreen);
 }
 
 async function abrirVideo(v) {
   // se pide aquí, aún dentro del clic del usuario (si no, el navegador lo bloquea)
-  entrarPantallaCompleta();
+  const fsListo = entrarPantallaCompleta();
+  if (!fsListo && soloVideoFS) {
+    // iPhone: hay que esperar a que el video cargue antes de poder abrirlo en grande
+    const alCargar = () => {
+      vid.removeEventListener("loadedmetadata", alCargar);
+      try { vid.webkitEnterFullscreen(); } catch (e) {}
+    };
+    vid.addEventListener("loadedmetadata", alCargar);
+  }
   document.getElementById("tituloReproduciendo").textContent = v.titulo || v.nombre;
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
@@ -1017,7 +1042,10 @@ function cerrarReproductor() {
   vid.load();
   playerVideo.classList.remove("abierto", "cargando", "pausado", "ocultar-ui");
   if (enPantallaCompleta()) {
-    try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
+    try {
+      if (vid.webkitDisplayingFullscreen && vid.webkitExitFullscreen) vid.webkitExitFullscreen();
+      else if (salirFS) salirFS.call(document);
+    } catch (e) {}
   }
   setTimeout(() => { cerrandoAdrede = false; }, 300);
 }
@@ -1092,8 +1120,13 @@ barraTiempo.addEventListener("touchend", () => { arrastrandoBarra = false; }, { 
 
 function pantallaCompleta() {
   if (enPantallaCompleta()) {
-    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  } else entrarPantallaCompleta();
+    try {
+      if (vid.webkitDisplayingFullscreen && vid.webkitExitFullscreen) vid.webkitExitFullscreen();
+      else if (salirFS) salirFS.call(document);
+    } catch (e) {}
+  } else if (!entrarPantallaCompleta() && soloVideoFS) {
+    try { vid.webkitEnterFullscreen(); } catch (e) {}
+  }
 }
 document.getElementById("btnPantalla").addEventListener("click", pantallaCompleta);
 
@@ -1104,7 +1137,7 @@ function alSalirDePantallaCompleta() {
     vid.pause();
   }
 }
-["fullscreenchange", "webkitfullscreenchange"].forEach(ev =>
+["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach(ev =>
   document.addEventListener(ev, alSalirDePantallaCompleta));
 vid.addEventListener("webkitendfullscreen", alSalirDePantallaCompleta);   // iPhone
 
