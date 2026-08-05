@@ -827,9 +827,48 @@ async function subirLote(lista, carpeta, titulo) {
   return { ok, errores };
 }
 
+/* Comprueba de verdad si el navegador puede reproducir el archivo:
+   lo abre localmente y ve si logra leer sus datos. Así detecta .avi, .mkv,
+   .wmv y cualquier otro formato que no se vería en la web. */
+function navegadorPuedeReproducir(file) {
+  return new Promise(listo => {
+    const v = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    let resuelto = false;
+    const terminar = ok => {
+      if (resuelto) return;
+      resuelto = true;
+      URL.revokeObjectURL(url);
+      v.removeAttribute("src");
+      listo(ok);
+    };
+    v.preload = "metadata";
+    v.muted = true;
+    v.onloadedmetadata = () => terminar(true);
+    v.onerror = () => terminar(false);
+    setTimeout(() => terminar(false), 10000);
+    v.src = url;
+  });
+}
+
 async function subirVideos(files) {
   const lista = [...files].filter(f => f.type.startsWith("video/") || /\.(mkv|avi|m3u8|mpd|ogv|3gp|flv|wmv|mov|webm|mp4)$/i.test(f.name));
   if (!lista.length) return;
+
+  // avisar de los que no se verían en el navegador (por ejemplo .avi)
+  const incompatibles = [];
+  for (const f of lista) {
+    if (/\.(m3u8|mpd)$/i.test(f.name)) continue;          // los streams no se pueden comprobar así
+    if (!(await navegadorPuedeReproducir(f))) incompatibles.push(f.name);
+  }
+  if (incompatibles.length) {
+    const seguir = confirm(
+      "Estos archivos NO se pueden ver en navegadores:\n\n• " + incompatibles.join("\n• ") +
+      "\n\nFormatos como .avi, .wmv o algunos .mkv hay que convertirlos a MP4 (H.264 + AAC).\n\n" +
+      "¿Subirlos de todas formas?"
+    );
+    if (!seguir) { inputVideos.value = ""; return; }
+  }
   const { ok, errores } = await subirLote(lista, "videos", "Subiendo video" + (lista.length > 1 ? "s" : "") + "…");
   inputVideos.value = "";
   if (errores.length) aviso("Subidos " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
