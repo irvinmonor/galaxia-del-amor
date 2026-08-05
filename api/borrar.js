@@ -35,14 +35,31 @@ export default async function handler(req, res) {
     const { fileName, fileId } = req.body || {};
     if (!fileName || !fileId) return res.status(400).json({ error: "Faltan fileName y fileId" });
     const a = await b2Auth();
-    const r = await fetch(a.apiUrl + "/b2api/v2/b2_delete_file_version", {
+
+    const borrar = () => fetch(a.apiUrl + "/b2api/v2/b2_delete_file_version", {
       method: "POST",
       headers: { Authorization: a.authorizationToken, "Content-Type": "application/json" },
       body: JSON.stringify({ fileName, fileId })
     });
-    const j = await r.json();
-    if (!r.ok) throw new Error("B2 delete fallo: " + JSON.stringify(j));
-    res.status(200).json({ ok: true });
+
+    let r = await borrar();
+    let j = await r.json();
+    if (r.ok) return res.status(200).json({ ok: true });
+
+    // Las subidas grandes que quedaron a medias no son archivos todavía:
+    // no se borran, se cancelan.
+    if (j.code === "file_not_present" || j.code === "not_found") {
+      const c = await fetch(a.apiUrl + "/b2api/v2/b2_cancel_large_file", {
+        method: "POST",
+        headers: { Authorization: a.authorizationToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId })
+      });
+      if (c.ok) return res.status(200).json({ ok: true, cancelado: true });
+      // si tampoco existe como subida a medias, es que ya no estaba: damos por hecho el borrado
+      return res.status(200).json({ ok: true, yaNoEstaba: true });
+    }
+
+    throw new Error("B2 no pudo borrar: " + (j.message || JSON.stringify(j)));
   } catch (e) {
     res.status(500).json({ error: String(e && e.message || e) });
   }

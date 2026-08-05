@@ -38,8 +38,27 @@ export default async function handler(req, res) {
         fileName: f.fileName,
         fileId: f.fileId
       }));
+    // subidas grandes que quedaron a medias: no son archivos usables, pero ocupan
+    // espacio y hay que poder verlas para cancelarlas
+    let incompletos = [];
+    if (req.query.incompletos === "1") {
+      const ru = await fetch(a.apiUrl + "/b2api/v2/b2_list_unfinished_large_files", {
+        method: "POST",
+        headers: { Authorization: a.authorizationToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketId: process.env.B2_BUCKET_ID, maxFileCount: 100 })
+      });
+      const ju = await ru.json();
+      incompletos = (ju.files || [])
+        .filter(f => f.fileName.indexOf(carpeta + "/") === 0)
+        .map(f => ({
+          nombre: f.fileName.replace(carpeta + "/", "").replace(/^\d+-/, "").replace(/\.[^.]+$/, "").replace(/-/g, " "),
+          url: "", tipo: f.contentType || "", tam: 0,
+          fileName: f.fileName, fileId: f.fileId, incompleto: true
+        }));
+    }
+
     res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
-    res.status(200).json({ archivos, videos: archivos });
+    res.status(200).json({ archivos, videos: archivos, incompletos });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message || e) });
   }

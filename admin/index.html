@@ -119,6 +119,18 @@ textarea{resize:vertical;min-height:90px}
 }
 .veditor .edZonaVid.encima{border-color:#e50914;background:rgba(229,9,20,.1)}
 .veditor .edEstadoVid{font-size:12.5px;color:#9f86c9;margin-top:8px}
+.edHistorial{margin-top:10px}
+.histCargando{font-size:12.5px;color:#9f86c9;padding:8px 2px}
+.histFila{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid var(--borde);
+}
+.histFila.incompleto{border-color:rgba(255,180,60,.45);background:rgba(255,180,60,.07)}
+.histInfo{flex:1;min-width:0}
+.histNom{font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.histMeta{font-size:11.5px;color:#9f86c9;margin-top:2px}
+.histFila.incompleto .histMeta{color:#ffcc7a}
+.histBtns{display:flex;gap:5px;flex:none}
 .veditor .edZonaSub{
   border:2px dashed rgba(179,136,255,.45);border-radius:12px;padding:16px;text-align:center;
   color:#c9a6ff;cursor:pointer;font-size:13.5px;transition:all .2s;
@@ -535,8 +547,11 @@ async function subir(files) {
   }
 
   // 2) subir en paralelo a Backblaze
-  const { ok, errores } = await subirLote(lista, "fotos", "Subiendo foto" + (lista.length > 1 ? "s" : "") + "…");
+  if (!agregarACola(lista, "fotos")) { inputFotos.value = ""; return; }
+  const res = await correrCola("Subiendo foto" + (lista.length > 1 ? "s" : "") + "…");
   inputFotos.value = "";
+  if (!res) return;                       // otra tanda ya estaba corriendo: ella avisará al final
+  const { ok, errores } = res;
   const nota = ahorro > 0 ? " (" + pesoLegible(ahorro) + " ahorrados en WebP)" : "";
   if (errores.length) aviso("Subidas " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
   else aviso(ok + " foto(s) subida(s) 📸" + nota + " ¡Ya giran en la galaxia!");
@@ -817,43 +832,90 @@ function tiempoLegible(s) {
   return (s / 3600).toFixed(1) + " h";
 }
 
-/* Sube una lista en paralelo (3 a la vez) mostrando progreso real por bytes */
-async function subirLote(lista, carpeta, titulo) {
-  const bytesTotales = lista.reduce((a, f) => a + f.size, 0);
-  const hechos = new Array(lista.length).fill(0);
-  panelSub.abrir(titulo, bytesTotales);
+/* ============================================================
+   COLA DE SUBIDAS
+   Todo lo que se arrastra entra a una sola cola: si ya hay algo
+   subiendo, lo nuevo se suma en vez de arrancar otra barra encima.
+   ============================================================ */
+const COLA = [];              // {file, carpeta, hechos, listo, error, clave}
+let cursorCola = 0;
+let colaCorriendo = false;
+const enCola = new Set();     // claves de lo que está en proceso ahora mismo
 
-  let siguiente = 0, ok = 0;
-  const errores = [];
-  const pintar = () => {
-    const suma = hechos.reduce((a, b) => a + b, 0);
-    const terminados = ok + errores.length;
-    panelSub.actualizar(
-      bytesTotales ? suma / bytesTotales * 100 : 0,
-      lista.length > 1
-        ? "Archivo " + Math.min(terminados + 1, lista.length) + " de " + lista.length + " · " + pesoLegible(suma) + " de " + pesoLegible(bytesTotales)
-        : lista[0].name + " · " + pesoLegible(suma) + " de " + pesoLegible(bytesTotales)
-    );
-  };
-  pintar();
+const claveArchivo = f => f.name.toLowerCase() + "|" + f.size;
+
+/* ¿este archivo ya está guardado en Backblaze? (el nombre se limpia al subir) */
+function yaEstaSubido(f, lista) {
+  const limpio = f.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
+  return (lista || []).some(v => String(v.fileName || "").toLowerCase().endsWith("-" + limpio));
+}
+
+function pintarCola() {
+  const total = COLA.reduce((a, i) => a + i.file.size, 0);
+  const suma = COLA.reduce((a, i) => a + i.hechos, 0);
+  const terminados = COLA.filter(i => i.listo || i.error).length;
+  const enCurso = COLA.find(i => !i.listo && !i.error);
+  panelSub.bytesTotales = total;
+  panelSub.actualizar(
+    total ? suma / total * 100 : 0,
+    (COLA.length > 1 ? "Archivo " + Math.min(terminados + 1, COLA.length) + " de " + COLA.length + " · " : "") +
+    (enCurso ? enCurso.file.name + " · " : "") +
+    pesoLegible(suma) + " de " + pesoLegible(total)
+  );
+}
+
+/* Agrega archivos a la cola. Devuelve cuántos entraron. */
+function agregarACola(archivos, carpeta) {
+  const repetidos = [];
+  let entraron = 0;
+  for (const f of archivos) {
+    const k = claveArchivo(f);
+    if (enCola.has(k)) { repetidos.push(f.name); continue; }
+    enCola.add(k);
+    COLA.push({ file: f, carpeta, clave: k, hechos: 0, listo: false, error: null });
+    entraron++;
+  }
+  if (repetidos.length) {
+    aviso("Ya se está subiendo: " + repetidos.join(" · ") + ". Espera a que termine.", "error");
+  }
+  return entraron;
+}
+
+async function correrCola(titulo) {
+  if (colaCorriendo) { pintarCola(); return; }   // ya hay quien la atiende
+  colaCorriendo = true;
+  panelSub.abrir(titulo, COLA.reduce((a, i) => a + i.file.size, 0));
+  pintarCola();
 
   async function trabajador() {
-    while (siguiente < lista.length) {
-      const i = siguiente++;
-      const f = lista[i];
+    while (cursorCola < COLA.length) {
+      const item = COLA[cursorCola++];
       try {
-        await subirAB2(f, carpeta, p => { hechos[i] = f.size * p / 100; pintar(); });
-        hechos[i] = f.size; ok++;
+        await subirAB2(item.file, item.carpeta, p => { item.hechos = item.file.size * p / 100; pintarCola(); });
+        item.hechos = item.file.size; item.listo = true;
       } catch (e) {
-        hechos[i] = f.size;
-        errores.push(f.name + " (" + e.message + ")");
+        item.hechos = item.file.size; item.error = e.message;
       }
-      pintar();
+      enCola.delete(item.clave);
+      pintarCola();
     }
   }
-  await Promise.all(Array.from({ length: Math.min(SUBIDAS_PARALELAS, lista.length) }, trabajador));
+
+  // si mientras se sube llegan más archivos, se vuelven a repartir trabajadores
+  while (cursorCola < COLA.length) {
+    const faltan = COLA.length - cursorCola;
+    await Promise.all(Array.from({ length: Math.min(SUBIDAS_PARALELAS, faltan) }, trabajador));
+  }
+
+  const ok = COLA.filter(i => i.listo).length;
+  const errores = COLA.filter(i => i.error).map(i => i.file.name + " (" + i.error + ")");
+  const carpetas = [...new Set(COLA.map(i => i.carpeta))];
+
   panelSub.cerrar(errores.length ? "Terminó con " + errores.length + " error(es)" : "¡Subida completa! 🎉");
-  return { ok, errores };
+  COLA.length = 0; cursorCola = 0; colaCorriendo = false;
+
+  if (errores.length) aviso("Subidos " + ok + ". Fallaron: " + errores.join(" · "), "error");
+  return { ok, errores, carpetas };
 }
 
 /* Comprueba de verdad si el navegador puede reproducir el archivo:
@@ -898,8 +960,17 @@ async function subirVideos(files) {
     );
     if (!seguir) { inputVideos.value = ""; return; }
   }
-  const { ok, errores } = await subirLote(lista, "videos", "Subiendo video" + (lista.length > 1 ? "s" : "") + "…");
+  // avisar si alguno ya está guardado en Backblaze
+  const repes = lista.filter(f => yaEstaSubido(f, VIDS));
+  if (repes.length && !confirm(
+      "Estos ya están subidos:\n\n• " + repes.map(f => f.name).join("\n• ") +
+      "\n\n¿Subirlos otra vez de todas formas?")) { inputVideos.value = ""; return; }
+
+  if (!agregarACola(lista, "videos")) { inputVideos.value = ""; return; }
+  const res = await correrCola("Subiendo video" + (lista.length > 1 ? "s" : "") + "…");
   inputVideos.value = "";
+  if (!res) return;                       // ya había una cola corriendo
+  const { ok, errores } = res;
   if (errores.length) aviso("Subidos " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
   else aviso(ok + " video(s) subido(s) 🎬 ¡Ya se ven en el modo Netflix!");
   cargarVideos();
@@ -1148,6 +1219,10 @@ function abrirEditor(fila, v) {
       <input type="url" class="edLinkVid" placeholder="…o pega un link (.mp4, ok.ru, YouTube…)" style="flex:1;min-width:220px">
       <button class="btn sec edCambiarLink" style="margin:0">Cambiar por link</button>
     </div>
+    <div class="fila" style="margin-top:8px">
+      <button class="btn sec edVerSubidos" style="margin:0">📂 Usar uno ya subido</button>
+    </div>
+    <div class="edHistorial"></div>
     <div class="edEstadoVid"></div>
 
     <label>Subtítulos (opcional) — acepta <b>.srt</b> y <b>.vtt</b></label>
@@ -1255,6 +1330,71 @@ function abrirEditor(fila, v) {
     }
     fileVid.value = "";
   }
+
+  /* --- historial: archivos que ya están en Backblaze --- */
+  const hist = ed.querySelector(".edHistorial");
+  ed.querySelector(".edVerSubidos").addEventListener("click", async () => {
+    if (hist.innerHTML) { hist.innerHTML = ""; return; }
+    hist.innerHTML = '<div class="histCargando">Buscando archivos…</div>';
+    let j;
+    try { j = await pedirJSON("/api/archivos?carpeta=videos&incompletos=1"); }
+    catch (e) { hist.innerHTML = ""; return aviso("No se pudo leer el historial: " + e.message, "error"); }
+
+    const usados = new Set(VIDS.filter(x => x.origen === "b2").map(x => x.fileName));
+    const todos = (j.archivos || []).concat(j.incompletos || []);
+    if (!todos.length) { hist.innerHTML = '<div class="histCargando">No hay archivos guardados.</div>'; return; }
+
+    hist.innerHTML = "";
+    todos.forEach(f => {
+      const enUso = usados.has(f.fileName);
+      const esteMismo = f.fileName === v.fileName;
+      const fila = document.createElement("div");
+      fila.className = "histFila" + (f.incompleto ? " incompleto" : "");
+      fila.innerHTML = `
+        <div class="histInfo">
+          <div class="histNom">${f.nombre}</div>
+          <div class="histMeta">${f.incompleto ? "⚠️ subida incompleta (no sirve, solo ocupa espacio)"
+                                : pesoLegible(f.tam || 0) + (esteMismo ? " · es el de este video" : enUso ? " · en uso por otro" : " · libre")}</div>
+        </div>
+        <div class="histBtns">
+          ${f.incompleto || esteMismo ? "" : '<button class="vbtn" data-h="usar" title="Usar este archivo">✔</button>'}
+          <button class="vbtn peligro" data-h="borrar" title="Borrar de Backblaze">🗑</button>
+        </div>`;
+
+      const bUsar = fila.querySelector('[data-h=usar]');
+      if (bUsar) bUsar.addEventListener("click", async () => {
+        if (enUso && !confirm("Ese archivo ya lo usa otro video de la lista.\n¿Aun así quieres apuntar este a ese archivo?")) return;
+        if (!confirm("Este video pasará a usar «" + f.nombre + "».\nEl archivo actual NO se borra.\n\n¿Continuar?")) return;
+        try {
+          const datos = Object.assign({}, META[v.fileName]);
+          delete META[v.fileName];
+          META[f.fileName] = Object.assign({}, META[f.fileName], datos);
+          const links = v.origen === "link" ? videosLink().filter(l => l.id !== v.fileName) : videosLink();
+          await guardarConfig({ videosLink: links, videosMeta: META });
+          aviso("Listo: ahora usa ese archivo.");
+          ed.remove(); cargarVideos();
+        } catch (e) { aviso("No se pudo cambiar: " + e.message, "error"); }
+      });
+
+      fila.querySelector('[data-h=borrar]').addEventListener("click", async () => {
+        if (!confirm("¿Borrar «" + f.nombre + "» de Backblaze?\n\n" +
+              (enUso ? "⚠️ OJO: lo está usando un video de la lista y dejará de verse.\n\n" : "") +
+              "Esta acción no se puede deshacer.")) return;
+        const tok = await tokenSesion();
+        const r = await fetch("/api/borrar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+          body: JSON.stringify({ fileName: f.fileName, fileId: f.fileId })
+        });
+        const res = await r.json().catch(() => ({}));
+        if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error");
+        fila.remove();
+        aviso("Archivo borrado 🗑");
+      });
+
+      hist.appendChild(fila);
+    });
+  });
 
   ed.querySelector(".edCambiarLink").addEventListener("click", async () => {
     const info = analizarLink(inLinkVid.value);

@@ -988,9 +988,21 @@ let urlPistaSub = null;
 // vienen activados salvo que ella los haya apagado
 function subsEncendidos() { try { return localStorage.getItem(CLAVE_SUBS) !== "0"; } catch (e) { return true; } }
 
+/* Los sube un poco: por defecto quedan pegados al borde de abajo,
+   tapados por la barra de controles. -3 = tres renglones más arriba. */
+function acomodarSubs() {
+  for (const t of vid.textTracks) {
+    if (!t.cues) continue;
+    for (const c of t.cues) {
+      try { c.snapToLines = true; c.line = -3; } catch (e) {}
+    }
+  }
+}
+
 function aplicarModoSubs() {
   const on = subsEncendidos();
   for (const t of vid.textTracks) t.mode = on ? "showing" : "hidden";
+  acomodarSubs();
   btnCC.classList.toggle("apagado", !on);
   btnCC.title = on ? "Ocultar subtítulos (C)" : "Mostrar subtítulos (C)";
 }
