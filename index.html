@@ -1109,13 +1109,29 @@ function mostrarAvisoParty(a) {
     t.textContent = texto;
     el.appendChild(t);
   }
-  document.body.appendChild(el);
+  // En pantalla completa el navegador SOLO dibuja lo que está dentro del
+  // elemento ampliado: si lo colgamos del body, el aviso no se vería.
+  contenedorAvisos().appendChild(el);
   setTimeout(() => el.classList.add("visible"), 20);
   setTimeout(() => {
     el.classList.remove("visible");
     setTimeout(() => el.remove(), 600);
   }, Math.max(1, a.dur || 6) * 1000);
 }
+
+function contenedorAvisos() {
+  return document.fullscreenElement || document.webkitFullscreenElement || document.body;
+}
+
+/* si entran o salen de pantalla completa con un aviso puesto, se lo llevan */
+function reubicarAvisos() {
+  const destino = contenedorAvisos();
+  document.querySelectorAll(".avisoParty").forEach(a => {
+    if (a.parentNode !== destino) destino.appendChild(a);
+  });
+}
+["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"]
+  .forEach(ev => document.addEventListener(ev, reubicarAvisos));
 
 async function aplicarEstadoRemoto(p) {
   if (!p || p.de === MI_ID) return;
