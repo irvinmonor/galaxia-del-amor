@@ -131,6 +131,41 @@ textarea{resize:vertical;min-height:90px}
 .histMeta{font-size:11.5px;color:#9f86c9;margin-top:2px}
 .histFila.incompleto .histMeta{color:#ffcc7a}
 .histBtns{display:flex;gap:5px;flex:none}
+/* modo party */
+#pEmojis{display:flex;flex-wrap:wrap;gap:6px}
+#pEmojis .emo{
+  border:1px solid var(--borde);background:rgba(0,0,0,.3);border-radius:9px;
+  width:36px;height:36px;font-size:18px;cursor:pointer;transition:all .15s;
+}
+#pEmojis .emo:hover{background:var(--rosa2);transform:translateY(-2px)}
+#pRejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:170px}
+#pRejilla .pos{
+  aspect-ratio:1;border:1px solid var(--borde);background:rgba(0,0,0,.3);color:#c9a6ff;
+  border-radius:9px;cursor:pointer;font-size:16px;transition:all .15s;
+}
+#pRejilla .pos:hover{background:rgba(255,46,154,.25)}
+#pRejilla .pos.activa{background:linear-gradient(135deg,var(--rosa2),var(--lila));color:#fff;border-color:transparent}
+#pPreview{
+  position:relative;height:150px;border-radius:12px;overflow:hidden;display:flex;padding:10px;
+  background:linear-gradient(140deg,#241040,#0a0018);border:1px solid var(--borde);
+}
+#pCaja{
+  background:rgba(10,0,24,.86);border:1px solid rgba(255,107,214,.6);border-radius:12px;
+  padding:8px 14px;font-weight:600;max-width:80%;white-space:pre-wrap;height:fit-content;
+  box-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+#pPreview.prev-arriba-izq{align-items:flex-start;justify-content:flex-start}
+#pPreview.prev-arriba{align-items:flex-start;justify-content:center}
+#pPreview.prev-arriba-der{align-items:flex-start;justify-content:flex-end}
+#pPreview.prev-izq{align-items:center;justify-content:flex-start}
+#pPreview.prev-centro{align-items:center;justify-content:center}
+#pPreview.prev-der{align-items:center;justify-content:flex-end}
+#pPreview.prev-abajo-izq{align-items:flex-end;justify-content:flex-start}
+#pPreview.prev-abajo{align-items:flex-end;justify-content:center}
+#pPreview.prev-abajo-der{align-items:flex-end;justify-content:flex-end}
+#pEstado{font-size:12.5px;margin-top:8px}
+#pEstado.bueno{color:#8dffc4}
+#pEstado.malo{color:#ff9aae}
 .veditor .edZonaSub{
   border:2px dashed rgba(179,136,255,.45);border-radius:12px;padding:16px;text-align:center;
   color:#c9a6ff;cursor:pointer;font-size:13.5px;transition:all .2s;
@@ -338,6 +373,41 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       <textarea id="fFrases" style="min-height:140px"></textarea>
       <label>Frases de los gatitos (una por línea)</label>
       <textarea id="fFrasesKitty" style="min-height:100px"></textarea>
+    </div>
+
+    <div class="tarjeta seccion netflix">
+      <h2>🎉 Modo party — avisos en pantalla</h2>
+      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 4px">
+        Manda un mensaje que aparece encima de lo que estén viendo, al instante.
+        El video además se sincroniza solo: si uno pausa o adelanta, al otro le pasa lo mismo.
+      </p>
+
+      <label>Mensaje</label>
+      <textarea id="pTexto" style="min-height:60px" placeholder="Te amo 💕"></textarea>
+
+      <label>Emojis rápidos (haz clic para agregarlos)</label>
+      <div id="pEmojis"></div>
+
+      <div class="fila" style="gap:18px;align-items:flex-start">
+        <div style="flex:1;min-width:180px">
+          <label>Tamaño de letra: <b id="pTamVal">26</b> px</label>
+          <input type="range" id="pTam" min="14" max="72" value="26" style="width:100%">
+          <label>Dura en pantalla: <b id="pDurVal">6</b> s</label>
+          <input type="range" id="pDur" min="2" max="30" value="6" style="width:100%">
+          <label>Color del texto</label>
+          <input type="color" id="pColor" value="#ffd1ec" style="width:100%;height:38px;padding:3px">
+        </div>
+        <div style="flex:1;min-width:150px">
+          <label>¿Dónde aparece?</label>
+          <div id="pRejilla"></div>
+        </div>
+      </div>
+
+      <label>Así se verá</label>
+      <div id="pPreview"><div id="pCaja"></div></div>
+
+      <button class="btn" id="btnEnviarAviso" style="width:100%">📣 Enviar ahora</button>
+      <div id="pEstado"></div>
     </div>
 
     <div class="tarjeta">
@@ -1515,6 +1585,89 @@ async function subirFondo(file) {
   }
   inputFondo.value = "";
 }
+
+/* ============================================================
+   🎉 MODO PARTY — enviar avisos a quien esté viendo
+   ============================================================ */
+const EMOJIS_RAPIDOS = ["💖","😍","🥰","😘","🤣","😱","😭","👀","🍿","🎬","🔥","✨","💯","👏","🙈","💋","🌹","☕","🛌","❤️‍🔥"];
+const POSICIONES = [
+  ["arriba-izq","↖"], ["arriba","↑"], ["arriba-der","↗"],
+  ["izq","←"],        ["centro","•"], ["der","→"],
+  ["abajo-izq","↙"],  ["abajo","↓"],  ["abajo-der","↘"]
+];
+let posElegida = "abajo";
+let canalAdmin = null;
+
+function pintarVistaPrevia() {
+  const caja = $("pCaja");
+  caja.textContent = $("pTexto").value || "Tu mensaje aparecerá así";
+  caja.style.fontSize = Math.max(11, $("pTam").value * 0.45) + "px";   // el recuadro es más chico
+  caja.style.color = $("pColor").value;
+  $("pPreview").className = "prev-" + posElegida;
+  $("pTamVal").textContent = $("pTam").value;
+  $("pDurVal").textContent = $("pDur").value;
+}
+
+(function armarParty() {
+  const cE = $("pEmojis");
+  EMOJIS_RAPIDOS.forEach(e => {
+    const b = document.createElement("button");
+    b.className = "emo"; b.type = "button"; b.textContent = e;
+    b.addEventListener("click", () => {
+      const t = $("pTexto");
+      t.value = (t.value + (t.value && !/\s$/.test(t.value) ? " " : "") + e);
+      t.focus(); pintarVistaPrevia();
+    });
+    cE.appendChild(b);
+  });
+
+  const cR = $("pRejilla");
+  POSICIONES.forEach(([id, flecha]) => {
+    const b = document.createElement("button");
+    b.className = "pos" + (id === posElegida ? " activa" : "");
+    b.type = "button"; b.textContent = flecha; b.title = id.replace("-", " ");
+    b.addEventListener("click", () => {
+      posElegida = id;
+      cR.querySelectorAll(".pos").forEach(x => x.classList.remove("activa"));
+      b.classList.add("activa");
+      pintarVistaPrevia();
+    });
+    cR.appendChild(b);
+  });
+
+  ["pTexto", "pTam", "pDur", "pColor"].forEach(id => {
+    $(id).addEventListener("input", pintarVistaPrevia);
+  });
+  pintarVistaPrevia();
+})();
+
+function salaAdmin() {
+  if (canalAdmin || !sb) return canalAdmin;
+  canalAdmin = sb.channel("jeniflix-party", { config: { broadcast: { self: false } } });
+  canalAdmin.subscribe();
+  return canalAdmin;
+}
+
+$("btnEnviarAviso").addEventListener("click", async () => {
+  const texto = $("pTexto").value.trim();
+  if (!texto) return aviso("Escribe el mensaje primero.", "error");
+  const canal = salaAdmin();
+  if (!canal) return aviso("No hay conexión con la sala.", "error");
+  const b = $("btnEnviarAviso"); b.disabled = true;
+  try {
+    await canal.send({
+      type: "broadcast", event: "aviso",
+      payload: { texto, pos: posElegida, tam: +$("pTam").value, color: $("pColor").value, dur: +$("pDur").value }
+    });
+    $("pEstado").textContent = "Enviado ✓ (si nadie está viendo, no lo verá nadie)";
+    $("pEstado").className = "bueno";
+    aviso("Aviso enviado 📣");
+  } catch (e) {
+    $("pEstado").textContent = "No se pudo enviar: " + e.message;
+    $("pEstado").className = "malo";
+  }
+  b.disabled = false;
+});
 
 /* ---------- CUENTA ---------- */
 $("btnCambiarMail").addEventListener("click", async () => {

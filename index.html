@@ -241,6 +241,31 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 }
 @keyframes girarAro{to{transform:rotate(360deg)}}
 
+/* avisos del modo party (llegan desde el panel) */
+.avisoParty{
+  position:fixed;z-index:9500;max-width:min(80vw,620px);padding:14px 24px;border-radius:16px;
+  background:rgba(10,0,24,.86);border:1px solid rgba(255,107,214,.6);
+  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 30px rgba(255,46,154,.35);
+  font-weight:600;line-height:1.35;text-align:center;white-space:pre-wrap;
+  opacity:0;transform:translateY(14px) scale(.94);transition:opacity .4s,transform .4s;
+  pointer-events:none;backdrop-filter:blur(8px);
+}
+.avisoParty.visible{opacity:1;transform:translateY(0) scale(1)}
+.avisoParty.pos-arriba-izq{top:22px;left:22px;text-align:left}
+.avisoParty.pos-arriba{top:22px;left:50%;transform:translate(-50%,14px) scale(.94)}
+.avisoParty.pos-arriba.visible{transform:translate(-50%,0) scale(1)}
+.avisoParty.pos-arriba-der{top:22px;right:22px;text-align:right}
+.avisoParty.pos-izq{top:50%;left:22px;transform:translateY(-50%) scale(.94);text-align:left}
+.avisoParty.pos-izq.visible{transform:translateY(-50%) scale(1)}
+.avisoParty.pos-centro{top:50%;left:50%;transform:translate(-50%,-46%) scale(.94)}
+.avisoParty.pos-centro.visible{transform:translate(-50%,-50%) scale(1)}
+.avisoParty.pos-der{top:50%;right:22px;transform:translateY(-50%) scale(.94);text-align:right}
+.avisoParty.pos-der.visible{transform:translateY(-50%) scale(1)}
+.avisoParty.pos-abajo-izq{bottom:22px;left:22px;text-align:left}
+.avisoParty.pos-abajo{bottom:22px;left:50%;transform:translate(-50%,14px) scale(.94)}
+.avisoParty.pos-abajo.visible{transform:translate(-50%,0) scale(1)}
+.avisoParty.pos-abajo-der{bottom:22px;right:22px;text-align:right}
+
 /* aviso de "continuando desde…" */
 #avisoReanuda{
   position:absolute;z-index:21;left:50%;bottom:110px;transform:translate(-50%,12px);
@@ -681,6 +706,7 @@ let CONFIG = DEFAULTS;
 let FOTOS = [];      // URLs públicas de las fotos subidas desde /admin
 let VIDEOS = [];     // videos del modo Netflix: {nombre, url}
 let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador)
+let SB = null;        // cliente de Supabase, para la sala compartida
 
 /* ============================================================
    ☁️ CARGA REMOTA (Supabase) con respaldo local
@@ -690,6 +716,7 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
     const cred = window.GALAXIA_SUPABASE;
     if (cred && cred.url && cred.url.indexOf("https") === 0 && window.supabase) {
       const sb = window.supabase.createClient(cred.url, cred.anonKey);
+      SB = sb;
       const [cfgRes, sesRes] = await Promise.all([
         sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle(),
         sb.auth.getSession()
@@ -1041,6 +1068,70 @@ async function cargarSubtitulos(url) {
   } catch (e) { /* si falla, el video se ve igual sin subtítulos */ }
 }
 
+/* ============================================================
+   🎉 MODO PARTY — ver juntos y avisos desde el panel
+   Se sincroniza play, pausa y adelantos entre quienes estén viendo,
+   usando el canal en tiempo real de Supabase.
+   ============================================================ */
+const MI_ID = Math.random().toString(36).slice(2, 9);
+let canalSala = null;
+let aplicandoRemoto = false;   // evita el eco: no reenviar lo que acaba de llegar
+
+function emitirSala(evento, datos) {
+  if (!canalSala) return;
+  try { canalSala.send({ type: "broadcast", event: evento, payload: Object.assign({ de: MI_ID }, datos) }); }
+  catch (e) {}
+}
+
+function avisoParty(texto) {
+  mostrarAvisoParty({ texto, pos: "abajo", tam: 20, color: "#ffffff", dur: 3 });
+}
+
+function mostrarAvisoParty(a) {
+  const el = document.createElement("div");
+  el.className = "avisoParty pos-" + (a.pos || "centro");
+  el.style.fontSize = (a.tam || 24) + "px";
+  el.style.color = a.color || "#ffffff";
+  el.textContent = ((a.emoji ? a.emoji + " " : "") + (a.texto || "")).trim();
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add("visible"), 20);
+  setTimeout(() => {
+    el.classList.remove("visible");
+    setTimeout(() => el.remove(), 600);
+  }, Math.max(1, a.dur || 6) * 1000);
+}
+
+async function aplicarEstadoRemoto(p) {
+  if (!p || p.de === MI_ID) return;
+  if (!playerVideo.classList.contains("abierto") || playerVideo.classList.contains("incrustado")) return;
+  aplicandoRemoto = true;
+  try {
+    if (typeof p.t === "number" && isFinite(vid.duration) && Math.abs(vid.currentTime - p.t) > 1.5) {
+      vid.currentTime = p.t;
+    }
+    if (p.accion === "play") { await vid.play().catch(() => {}); avisoParty("▶ Reanudado del otro lado"); }
+    else if (p.accion === "pause") { vid.pause(); avisoParty("❚❚ Pausado del otro lado"); }
+    else if (p.accion === "seek") avisoParty("⏩ Adelantaron a " + reloj(p.t));
+  } finally {
+    setTimeout(() => { aplicandoRemoto = false; }, 400);
+  }
+}
+
+function unirseALaSala() {
+  if (!SB || canalSala) return;
+  try {
+    canalSala = SB.channel("jeniflix-party", { config: { broadcast: { self: false } } });
+    canalSala.on("broadcast", { event: "estado" }, ({ payload }) => aplicarEstadoRemoto(payload));
+    canalSala.on("broadcast", { event: "aviso" }, ({ payload }) => mostrarAvisoParty(payload || {}));
+    canalSala.subscribe();
+  } catch (e) { canalSala = null; }
+}
+
+/* avisar a los demás de lo que hago con el video */
+vid.addEventListener("play",  () => { if (!aplicandoRemoto) emitirSala("estado", { accion: "play",  t: vid.currentTime }); });
+vid.addEventListener("pause", () => { if (!aplicandoRemoto) emitirSala("estado", { accion: "pause", t: vid.currentTime }); });
+vid.addEventListener("seeked",() => { if (!aplicandoRemoto) emitirSala("estado", { accion: "seek",  t: vid.currentTime }); });
+
 btnCC.addEventListener("click", () => {
   try { localStorage.setItem(CLAVE_SUBS, subsEncendidos() ? "0" : "1"); } catch (e) {}
   aplicarModoSubs();
@@ -1143,6 +1234,7 @@ async function abrirVideo(v) {
   }
 
   cargarSubtitulos(v.subtitulo);   // si el video trae subtítulos, se activan solos
+  unirseALaSala();                 // para ver juntos y recibir avisos
 
   vid.play().catch(() => {});   // si el navegador bloquea, queda el botón gigante
   moverRaton();
