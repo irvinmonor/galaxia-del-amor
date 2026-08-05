@@ -113,6 +113,12 @@ textarea{resize:vertical;min-height:90px}
   color:#e8a8ae;cursor:pointer;font-size:13.5px;transition:all .2s;
 }
 .veditor .edZona.encima{border-color:#e50914;background:rgba(229,9,20,.1)}
+.veditor .edZonaVid{
+  border:2px dashed rgba(229,9,20,.45);border-radius:12px;padding:16px;text-align:center;
+  color:#e8a8ae;cursor:pointer;font-size:13.5px;transition:all .2s;
+}
+.veditor .edZonaVid.encima{border-color:#e50914;background:rgba(229,9,20,.1)}
+.veditor .edEstadoVid{font-size:12.5px;color:#9f86c9;margin-top:8px}
 .veditor .edZonaSub{
   border:2px dashed rgba(179,136,255,.45);border-radius:12px;padding:16px;text-align:center;
   color:#c9a6ff;cursor:pointer;font-size:13.5px;transition:all .2s;
@@ -1135,6 +1141,15 @@ function abrirEditor(fila, v) {
       <button class="btn sec edQuitar" style="margin:0">Quitar</button>
     </div>
     <div class="edPreview"></div>
+    <label>Reemplazar el video (se conservan título, portada, orden y subtítulos)</label>
+    <div class="edZonaVid">Arrastra el video nuevo o haz clic para elegirlo</div>
+    <input type="file" class="edFileVid" accept="video/*,.mkv,.avi,.m3u8,.mpd,.mov,.webm" style="display:none">
+    <div class="fila" style="margin-top:8px">
+      <input type="url" class="edLinkVid" placeholder="…o pega un link (.mp4, ok.ru, YouTube…)" style="flex:1;min-width:220px">
+      <button class="btn sec edCambiarLink" style="margin:0">Cambiar por link</button>
+    </div>
+    <div class="edEstadoVid"></div>
+
     <label>Subtítulos (opcional) — acepta <b>.srt</b> y <b>.vtt</b></label>
     <div class="edZonaSub">Arrastra el archivo de subtítulos o haz clic para elegirlo</div>
     <input type="file" class="edFileSub" accept=".srt,.vtt,text/plain,text/vtt" style="display:none">
@@ -1181,6 +1196,82 @@ function abrirEditor(fila, v) {
     }
     file.value = "";
   }
+
+  /* --- reemplazar el video en sí --- */
+  const zonaVid = ed.querySelector(".edZonaVid"), fileVid = ed.querySelector(".edFileVid"),
+        inLinkVid = ed.querySelector(".edLinkVid"), estadoVid = ed.querySelector(".edEstadoVid");
+
+  estadoVid.textContent = v.origen === "link"
+    ? "Ahora es un link" + (v.embed ? " incrustado." : " directo.")
+    : "Ahora es un archivo en Backblaze (" + pesoLegible(v.tam || 0) + ").";
+
+  zonaVid.addEventListener("click", () => fileVid.click());
+  zonaVid.addEventListener("dragover", e => { e.preventDefault(); zonaVid.classList.add("encima"); });
+  zonaVid.addEventListener("dragleave", () => zonaVid.classList.remove("encima"));
+  zonaVid.addEventListener("drop", e => { e.preventDefault(); zonaVid.classList.remove("encima"); reemplazarPorArchivo(e.dataTransfer.files[0]); });
+  fileVid.addEventListener("change", () => reemplazarPorArchivo(fileVid.files[0]));
+
+  /* borra el archivo viejo de Backblaze (si lo había) y traslada sus datos al nuevo */
+  async function trasladarDatos(nuevaClave, extra) {
+    const datos = Object.assign({}, META[v.fileName], extra || {});
+    delete META[v.fileName];
+    META[nuevaClave] = datos;
+
+    let listaLinks = videosLink();
+    if (v.origen === "link") listaLinks = listaLinks.filter(l => l.id !== v.fileName);
+    else {
+      const tok = await tokenSesion();
+      await fetch("/api/borrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+        body: JSON.stringify({ fileName: v.fileName, fileId: v.fileId })
+      }).catch(() => {});
+    }
+    return listaLinks;
+  }
+
+  async function reemplazarPorArchivo(f) {
+    if (!f) return;
+    if (!confirm("Se subirá el video nuevo y se borrará el anterior. ¿Continuar?")) return;
+    if (!/\.(m3u8|mpd)$/i.test(f.name) && !(await navegadorPuedeReproducir(f))) {
+      if (!confirm("Ese archivo no se puede ver en navegadores (hay que convertirlo a MP4 H.264+AAC).\n\n¿Subirlo de todas formas?")) return;
+    }
+    try {
+      panelSub.abrir("Subiendo el video nuevo…", f.size);
+      const nuevaUrl = await subirAB2(f, "videos", p => panelSub.actualizar(p, f.name));
+      // la clave del nuevo archivo es su ruta dentro del bucket: .../file/<bucket>/videos/xxx.mp4
+      const partes = (nuevaUrl.split("/file/")[1] || "").split("/");
+      partes.shift();                                   // quitar el nombre del bucket
+      const nuevaClave = partes.map(decodeURIComponent).join("/");
+      if (!nuevaClave) throw new Error("no se pudo leer la ruta del archivo subido");
+      const listaLinks = await trasladarDatos(nuevaClave);
+      await guardarConfig({ videosLink: listaLinks, videosMeta: META });
+      panelSub.cerrar("Video reemplazado 🎬");
+      aviso("Listo: el video quedó reemplazado y el anterior se borró.");
+      ed.remove(); cargarVideos();
+    } catch (e) {
+      panelSub.cerrar("Falló el reemplazo");
+      aviso("No se pudo reemplazar: " + e.message, "error");
+    }
+    fileVid.value = "";
+  }
+
+  ed.querySelector(".edCambiarLink").addEventListener("click", async () => {
+    const info = analizarLink(inLinkVid.value);
+    if (!info) return aviso("Escribe un link válido.", "error");
+    if (!confirm("Se cambiará por ese link y se borrará el video anterior. ¿Continuar?")) return;
+    try {
+      const nuevaClave = "link-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+      const listaLinks = await trasladarDatos(nuevaClave);
+      listaLinks.push({
+        id: nuevaClave, url: info.url, embed: info.embed,
+        nombre: (META[nuevaClave] || {}).titulo || v.nombre
+      });
+      await guardarConfig({ videosLink: listaLinks, videosMeta: META });
+      aviso("Listo: ahora se reproduce desde el link.");
+      ed.remove(); cargarVideos();
+    } catch (e) { aviso("No se pudo cambiar: " + e.message, "error"); }
+  });
 
   /* --- subtítulos --- */
   const inSub = ed.querySelector(".edSub"), zonaSub = ed.querySelector(".edZonaSub"),
