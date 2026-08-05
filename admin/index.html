@@ -163,6 +163,15 @@ textarea{resize:vertical;min-height:90px}
 #pPreview.prev-abajo-izq{align-items:flex-end;justify-content:flex-start}
 #pPreview.prev-abajo{align-items:flex-end;justify-content:center}
 #pPreview.prev-abajo-der{align-items:flex-end;justify-content:flex-end}
+#pZonaFoto{
+  border:2px dashed rgba(179,136,255,.45);border-radius:12px;padding:16px;text-align:center;
+  color:#c9a6ff;cursor:pointer;font-size:13.5px;transition:all .2s;
+}
+#pZonaFoto.encima{border-color:var(--lila);background:rgba(179,136,255,.12)}
+#pCaja .pFotoPrev{
+  display:block;max-width:100%;max-height:70px;width:auto;border-radius:8px;
+  margin:0 auto 6px;border:1px solid rgba(255,107,214,.5);
+}
 #pEstado{font-size:12.5px;margin-top:8px}
 #pEstado.bueno{color:#8dffc4}
 #pEstado.malo{color:#ff9aae}
@@ -338,6 +347,14 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         <label>Emojis rápidos (haz clic para agregarlos)</label>
         <div id="pEmojis"></div>
 
+        <label>Foto (opcional) — se muestra dentro del aviso</label>
+        <div id="pZonaFoto">Arrastra una foto o haz clic para elegirla</div>
+        <input type="file" id="pFile" accept="image/*" style="display:none">
+        <div class="fila" style="margin-top:8px">
+          <input type="url" id="pFotoUrl" placeholder="…o pega el link de una imagen" style="flex:1;min-width:200px">
+          <button class="btn sec" id="pQuitarFoto" style="margin:0">Quitar</button>
+        </div>
+
         <div class="fila" style="gap:18px;align-items:flex-start">
           <div style="flex:1;min-width:180px">
             <label>Tamaño de letra: <b id="pTamVal">26</b> px</label>
@@ -357,6 +374,12 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         <div id="pPreview"><div id="pCaja"></div></div>
 
         <button class="btn" id="btnEnviarAviso" style="width:100%">📣 Enviar ahora</button>
+
+        <label style="margin-top:18px">Control del video de todos, en vivo</label>
+        <div class="fila">
+          <button class="btn sec" id="btnPausarTodos" style="margin:0;flex:1">❚❚ Pausar a todos</button>
+          <button class="btn sec" id="btnReanudarTodos" style="margin:0;flex:1">▶ Reanudar a todos</button>
+        </div>
         <div id="pEstado"></div>
       </div>
     </div>
@@ -1598,16 +1621,57 @@ const POSICIONES = [
 ];
 let posElegida = "abajo";
 let canalAdmin = null;
+let fotoAviso = "";                                   // URL de la foto que acompaña al aviso
+const MI_ID_ADMIN = Math.random().toString(36).slice(2, 9);
 
 function pintarVistaPrevia() {
   const caja = $("pCaja");
-  caja.textContent = $("pTexto").value || "Tu mensaje aparecerá así";
+  const txt = $("pTexto").value || "Tu mensaje aparecerá así";
+  caja.innerHTML = "";
+  if (fotoAviso) {
+    const im = document.createElement("img");
+    im.src = fotoAviso; im.className = "pFotoPrev";
+    caja.appendChild(im);
+  }
+  const t = document.createElement("div");
+  t.textContent = txt;
+  caja.appendChild(t);
   caja.style.fontSize = Math.max(11, $("pTam").value * 0.45) + "px";   // el recuadro es más chico
   caja.style.color = $("pColor").value;
   $("pPreview").className = "prev-" + posElegida;
   $("pTamVal").textContent = $("pTam").value;
   $("pDurVal").textContent = $("pDur").value;
 }
+
+/* --- foto del aviso: se sube a Backblaze y se manda su link --- */
+(function armarFotoAviso() {
+  const zona = $("pZonaFoto"), file = $("pFile"), url = $("pFotoUrl");
+  const usar = u => { fotoAviso = u; url.value = u; pintarVistaPrevia(); };
+
+  zona.addEventListener("click", () => file.click());
+  zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("encima"); });
+  zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
+  zona.addEventListener("drop", e => { e.preventDefault(); zona.classList.remove("encima"); subirFotoAviso(e.dataTransfer.files[0]); });
+  file.addEventListener("change", () => subirFotoAviso(file.files[0]));
+  url.addEventListener("input", () => { fotoAviso = url.value.trim(); pintarVistaPrevia(); });
+  $("pQuitarFoto").addEventListener("click", () => usar(""));
+
+  async function subirFotoAviso(f) {
+    if (!f || !f.type.startsWith("image/")) return;
+    try {
+      const webp = await aWebp(f, 0.85);
+      panelSub.abrir("Subiendo la foto del aviso…", webp.size);
+      const u = await subirAB2(webp, "party", p => panelSub.actualizar(p, webp.name));
+      panelSub.cerrar("Foto lista 📸");
+      usar(u);
+      estadoParty("Foto lista — dale a Enviar cuando quieras");
+    } catch (e) {
+      panelSub.cerrar("Falló la subida");
+      estadoParty("No se pudo subir la foto: " + e.message, true);
+    }
+    file.value = "";
+  }
+})();
 
 (function armarParty() {
   const cE = $("pEmojis");
@@ -1649,26 +1713,52 @@ function salaAdmin() {
   return canalAdmin;
 }
 
+/* Los avisos del party se muestran aquí mismo, sin usar el aviso de arriba:
+   así la página no salta al inicio y puedes seguir mandando de corrido. */
+function estadoParty(texto, malo) {
+  const e = $("pEstado");
+  e.textContent = texto;
+  e.className = malo ? "malo" : "bueno";
+  clearTimeout(estadoParty._t);
+  estadoParty._t = setTimeout(() => { e.textContent = ""; e.className = ""; }, 4000);
+}
+
 $("btnEnviarAviso").addEventListener("click", async () => {
   const texto = $("pTexto").value.trim();
-  if (!texto) return aviso("Escribe el mensaje primero.", "error");
+  // puede ir solo texto, solo foto, o las dos cosas
+  if (!texto && !fotoAviso) return estadoParty("Escribe un mensaje o elige una foto.", true);
   const canal = salaAdmin();
-  if (!canal) return aviso("No hay conexión con la sala.", "error");
+  if (!canal) return estadoParty("No hay conexión con la sala.", true);
   const b = $("btnEnviarAviso"); b.disabled = true;
   try {
     await canal.send({
       type: "broadcast", event: "aviso",
-      payload: { texto, pos: posElegida, tam: +$("pTam").value, color: $("pColor").value, dur: +$("pDur").value }
+      payload: {
+        texto, pos: posElegida, tam: +$("pTam").value,
+        color: $("pColor").value, dur: +$("pDur").value,
+        img: fotoAviso || ""
+      }
     });
-    $("pEstado").textContent = "Enviado ✓ (si nadie está viendo, no lo verá nadie)";
-    $("pEstado").className = "bueno";
-    aviso("Aviso enviado 📣");
+    estadoParty("Enviado ✓ — puedes seguir mandando más");
+    $("pTexto").focus();
   } catch (e) {
-    $("pEstado").textContent = "No se pudo enviar: " + e.message;
-    $("pEstado").className = "malo";
+    estadoParty("No se pudo enviar: " + e.message, true);
   }
   b.disabled = false;
 });
+
+/* pausar / reanudar a todos los que estén viendo, en el momento */
+async function mandarEstado(accion) {
+  const canal = salaAdmin();
+  if (!canal) return estadoParty("No hay conexión con la sala.", true);
+  try {
+    // sin tiempo: solo pausa o reanuda, sin moverles el minuto
+    await canal.send({ type: "broadcast", event: "estado", payload: { accion, de: "panel-" + MI_ID_ADMIN } });
+    estadoParty(accion === "pause" ? "Pausado para todos ❚❚" : "Reanudado para todos ▶");
+  } catch (e) { estadoParty("No se pudo: " + e.message, true); }
+}
+$("btnPausarTodos").addEventListener("click", () => mandarEstado("pause"));
+$("btnReanudarTodos").addEventListener("click", () => mandarEstado("play"));
 
 /* ---------- CUENTA ---------- */
 $("btnCambiarMail").addEventListener("click", async () => {

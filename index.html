@@ -251,6 +251,11 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
   pointer-events:none;backdrop-filter:blur(8px);
 }
 .avisoParty.visible{opacity:1;transform:translateY(0) scale(1)}
+.avisoParty .fotoAviso{
+  display:block;max-width:min(60vw,420px);max-height:44vh;width:auto;
+  border-radius:12px;margin:0 auto 10px;border:1px solid rgba(255,107,214,.5);
+  box-shadow:0 6px 24px rgba(0,0,0,.6);
+}
 .avisoParty.pos-arriba-izq{top:22px;left:22px;text-align:left}
 .avisoParty.pos-arriba{top:22px;left:50%;transform:translate(-50%,14px) scale(.94)}
 .avisoParty.pos-arriba.visible{transform:translate(-50%,0) scale(1)}
@@ -1092,7 +1097,18 @@ function mostrarAvisoParty(a) {
   el.className = "avisoParty pos-" + (a.pos || "centro");
   el.style.fontSize = (a.tam || 24) + "px";
   el.style.color = a.color || "#ffffff";
-  el.textContent = ((a.emoji ? a.emoji + " " : "") + (a.texto || "")).trim();
+
+  if (a.img) {                       // foto que acompaña al mensaje
+    const im = document.createElement("img");
+    im.src = a.img; im.alt = ""; im.className = "fotoAviso";
+    el.appendChild(im);
+  }
+  const texto = ((a.emoji ? a.emoji + " " : "") + (a.texto || "")).trim();
+  if (texto) {
+    const t = document.createElement("div");
+    t.textContent = texto;
+    el.appendChild(t);
+  }
   document.body.appendChild(el);
   setTimeout(() => el.classList.add("visible"), 20);
   setTimeout(() => {
