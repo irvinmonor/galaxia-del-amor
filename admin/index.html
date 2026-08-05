@@ -168,6 +168,11 @@ textarea{resize:vertical;min-height:90px}
   color:#c9a6ff;cursor:pointer;font-size:13.5px;transition:all .2s;
 }
 #pZonaFoto.encima{border-color:var(--lila);background:rgba(179,136,255,.12)}
+/* zona señalada para pegar con Ctrl+V */
+.zonaPegado{box-shadow:0 0 0 2px rgba(255,46,154,.45) inset}
+.zonaPegado::after{
+  content:" · listo para pegar con Ctrl+V";font-size:11.5px;opacity:.85;
+}
 #pCaja .pFotoPrev{
   display:block;max-width:100%;max-height:70px;width:auto;border-radius:8px;
   margin:0 auto 6px;border:1px solid rgba(255,107,214,.5);
@@ -348,7 +353,7 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         <div id="pEmojis"></div>
 
         <label>Foto (opcional) — se muestra dentro del aviso</label>
-        <div id="pZonaFoto">Arrastra una foto o haz clic para elegirla</div>
+        <div id="pZonaFoto">Arrastra una foto, haz clic para elegirla o pégala con Ctrl+V</div>
         <input type="file" id="pFile" accept="image/*" style="display:none">
         <div class="fila" style="margin-top:8px">
           <input type="url" id="pFotoUrl" placeholder="…o pega el link de una imagen" style="flex:1;min-width:200px">
@@ -623,6 +628,7 @@ zona.addEventListener("click", () => inputFotos.click());
 zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("encima"); });
 zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
 zona.addEventListener("drop", e => { e.preventDefault(); zona.classList.remove("encima"); subir(e.dataTransfer.files); });
+registrarZonaPegado(zona, f => subir([f]));    // pegar fotos de la galaxia con Ctrl+V
 inputFotos.addEventListener("change", () => subir(inputFotos.files));
 
 async function subir(files) {
@@ -735,6 +741,41 @@ function aWebp(file, calidad = 0.85) {
     img.src = url;
   });
 }
+
+/* ============================================================
+   PEGAR IMÁGENES (Ctrl+V) — por ejemplo una captura de pantalla
+   ============================================================ */
+let zonaPegadoActiva = null;
+
+/* Marca una zona como destino del pegado y le cuelga qué hacer con la imagen */
+function registrarZonaPegado(zona, alRecibir) {
+  if (!zona) return;
+  zona.__alPegar = alRecibir;
+  zona.addEventListener("click", () => { zonaPegadoActiva = zona; resaltarZonaPegado(); });
+  zona.addEventListener("mouseenter", () => { zonaPegadoActiva = zona; resaltarZonaPegado(); });
+}
+
+function resaltarZonaPegado() {
+  document.querySelectorAll(".zonaPegado").forEach(z => z.classList.remove("zonaPegado"));
+  if (zonaPegadoActiva && document.contains(zonaPegadoActiva)) zonaPegadoActiva.classList.add("zonaPegado");
+}
+
+document.addEventListener("paste", e => {
+  const items = (e.clipboardData || {}).items || [];
+  let archivo = null;
+  for (const it of items) {
+    if (it.kind === "file" && String(it.type).indexOf("image/") === 0) { archivo = it.getAsFile(); break; }
+  }
+  if (!archivo) return;
+
+  // destino: la última zona señalada; si no hay, la foto del party
+  let zona = zonaPegadoActiva && document.contains(zonaPegadoActiva) ? zonaPegadoActiva : $("pZonaFoto");
+  if (!zona || !zona.__alPegar) return;
+  e.preventDefault();
+  // el portapapeles no trae nombre: le ponemos uno
+  const conNombre = new File([archivo], "pegada-" + Date.now() + ".png", { type: archivo.type || "image/png" });
+  zona.__alPegar(conNombre);
+});
 
 async function tokenSesion() {
   const { data } = await sb.auth.getSession();
@@ -1350,6 +1391,7 @@ function abrirEditor(fila, v) {
   zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
   zona.addEventListener("drop", e => { e.preventDefault(); zona.classList.remove("encima"); subirMini(e.dataTransfer.files[0]); });
   file.addEventListener("change", () => subirMini(file.files[0]));
+  registrarZonaPegado(zona, subirMini);        // pegar la portada con Ctrl+V
 
   async function subirMini(f) {
     if (!f || !f.type.startsWith("image/")) return;
@@ -1591,6 +1633,7 @@ zonaF.addEventListener("click", () => inputFondo.click());
 zonaF.addEventListener("dragover", e => { e.preventDefault(); zonaF.classList.add("encima"); });
 zonaF.addEventListener("dragleave", () => zonaF.classList.remove("encima"));
 zonaF.addEventListener("drop", e => { e.preventDefault(); zonaF.classList.remove("encima"); subirFondo(e.dataTransfer.files[0]); });
+registrarZonaPegado(zonaF, subirFondo);        // pegar el fondo con Ctrl+V
 inputFondo.addEventListener("change", () => subirFondo(inputFondo.files[0]));
 
 async function subirFondo(file) {
@@ -1655,6 +1698,7 @@ function pintarVistaPrevia() {
   file.addEventListener("change", () => subirFotoAviso(file.files[0]));
   url.addEventListener("input", () => { fotoAviso = url.value.trim(); pintarVistaPrevia(); });
   $("pQuitarFoto").addEventListener("click", () => usar(""));
+  registrarZonaPegado(zona, subirFotoAviso);   // también se puede pegar con Ctrl+V
 
   async function subirFotoAviso(f) {
     if (!f || !f.type.startsWith("image/")) return;
