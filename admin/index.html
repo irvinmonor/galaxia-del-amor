@@ -113,6 +113,14 @@ textarea{resize:vertical;min-height:90px}
   color:#e8a8ae;cursor:pointer;font-size:13.5px;transition:all .2s;
 }
 .veditor .edZona.encima{border-color:#e50914;background:rgba(229,9,20,.1)}
+.veditor .edZonaSub{
+  border:2px dashed rgba(179,136,255,.45);border-radius:12px;padding:16px;text-align:center;
+  color:#c9a6ff;cursor:pointer;font-size:13.5px;transition:all .2s;
+}
+.veditor .edZonaSub.encima{border-color:var(--lila);background:rgba(179,136,255,.12)}
+.veditor .edEstadoSub{font-size:12.5px;color:#9f86c9;margin-top:8px}
+.veditor .edEstadoSub.conSub{color:#8dffc4}
+.vmeta .sub{color:#c9a6ff}
 .veditor .edPreview{margin-top:12px}
 .veditor .edPreview img{width:190px;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:1px solid var(--borde)}
 img.vmini{width:88px;height:50px;object-fit:cover;border-radius:8px;background:#000;flex:none}
@@ -891,7 +899,7 @@ function pintarVids() {
       ${mini}
       <div class="vinfo">
         <div class="vnom">${m.titulo || v.nombre}</div>
-        <div class="vmeta">${pesoLegible(v.tam || 0)}${m.titulo ? " · título propio" : ""}${m.miniatura ? " · portada propia" : ""}${m.terminada ? ' · <b class="fin">✔ Terminada</b>' : ""}</div>
+        <div class="vmeta">${pesoLegible(v.tam || 0)}${m.titulo ? " · título propio" : ""}${m.miniatura ? " · portada propia" : ""}${m.subtitulo ? ' · <b class="sub">💬 subtítulos</b>' : ""}${m.terminada ? ' · <b class="fin">✔ Terminada</b>' : ""}</div>
       </div>
       <div class="vacciones">
         <button class="vbtn" data-a="editar" title="Título y portada">✏️</button>
@@ -934,6 +942,22 @@ function pintarVids() {
     : "Aún no hay videos — sube el primero 🎬";
 }
 
+/* Lee un archivo de texto respetando la codificación (los .srt suelen venir en Latin-1) */
+async function leerTexto(file) {
+  const buf = await file.arrayBuffer();
+  let txt = new TextDecoder("utf-8").decode(buf);
+  if (txt.indexOf("�") > -1) txt = new TextDecoder("windows-1252").decode(buf);
+  return txt.replace(/^﻿/, "");
+}
+
+/* Convierte SubRip (.srt) a WebVTT, que es lo único que entienden los navegadores */
+function srtAVtt(txt) {
+  const limpio = txt.replace(/\r\n?/g, "\n")
+    // los tiempos de .srt usan coma para los milisegundos; VTT usa punto
+    .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{1,3})/g, "$1.$2");
+  return /^WEBVTT/.test(limpio.trim()) ? limpio : "WEBVTT\n\n" + limpio.trim() + "\n";
+}
+
 /* editor de título y portada de un video */
 function abrirEditor(fila, v) {
   const ya = fila.nextElementSibling;
@@ -954,6 +978,14 @@ function abrirEditor(fila, v) {
       <button class="btn sec edQuitar" style="margin:0">Quitar</button>
     </div>
     <div class="edPreview"></div>
+    <label>Subtítulos (opcional) — acepta <b>.srt</b> y <b>.vtt</b></label>
+    <div class="edZonaSub">Arrastra el archivo de subtítulos o haz clic para elegirlo</div>
+    <input type="file" class="edFileSub" accept=".srt,.vtt,text/plain,text/vtt" style="display:none">
+    <div class="fila" style="margin-top:8px">
+      <input type="url" class="edSub" placeholder="…o pega el link de un .vtt" value="${(m.subtitulo || "").replace(/"/g, "&quot;")}" style="flex:1;min-width:200px">
+      <button class="btn sec edQuitarSub" style="margin:0">Quitar</button>
+    </div>
+    <div class="edEstadoSub"></div>
     <div class="fila">
       <button class="btn edGuardar">💾 Guardar</button>
       <button class="btn sec edCancelar">Cancelar</button>
@@ -993,12 +1025,55 @@ function abrirEditor(fila, v) {
     file.value = "";
   }
 
+  /* --- subtítulos --- */
+  const inSub = ed.querySelector(".edSub"), zonaSub = ed.querySelector(".edZonaSub"),
+        fileSub = ed.querySelector(".edFileSub"), estadoSub = ed.querySelector(".edEstadoSub");
+
+  const pintarSub = () => {
+    estadoSub.textContent = inSub.value.trim()
+      ? "✔ Este video tiene subtítulos; se activarán solos al reproducirlo."
+      : "Sin subtítulos.";
+    estadoSub.className = "edEstadoSub" + (inSub.value.trim() ? " conSub" : "");
+  };
+  pintarSub();
+  inSub.addEventListener("input", pintarSub);
+  ed.querySelector(".edQuitarSub").addEventListener("click", () => { inSub.value = ""; pintarSub(); });
+
+  zonaSub.addEventListener("click", () => fileSub.click());
+  zonaSub.addEventListener("dragover", e => { e.preventDefault(); zonaSub.classList.add("encima"); });
+  zonaSub.addEventListener("dragleave", () => zonaSub.classList.remove("encima"));
+  zonaSub.addEventListener("drop", e => { e.preventDefault(); zonaSub.classList.remove("encima"); subirSub(e.dataTransfer.files[0]); });
+  fileSub.addEventListener("change", () => subirSub(fileSub.files[0]));
+
+  async function subirSub(f) {
+    if (!f) return;
+    if (!/\.(srt|vtt)$/i.test(f.name)) return aviso("El archivo debe ser .srt o .vtt", "error");
+    try {
+      const vtt = srtAVtt(await leerTexto(f));
+      if (!/\d{2}:\d{2}:\d{2}[.,]\d{1,3}\s*-->/.test(vtt)) {
+        return aviso("Ese archivo no parece tener subtítulos con tiempos válidos.", "error");
+      }
+      const nombre = f.name.replace(/\.[^.]+$/, "") + ".vtt";
+      const archivo = new File([vtt], nombre, { type: "text/vtt" });
+      panelSub.abrir("Subiendo subtítulos…", archivo.size);
+      const url = await subirAB2(archivo, "subtitulos", p => panelSub.actualizar(p, nombre));
+      inSub.value = url; pintarSub();
+      panelSub.cerrar("Subtítulos listos 💬");
+      aviso("Subtítulos subidos — dale a Guardar para aplicarlos.");
+    } catch (e) {
+      panelSub.cerrar("Falló la subida");
+      aviso("No se pudieron subir los subtítulos: " + e.message, "error");
+    }
+    fileSub.value = "";
+  }
+
   ed.querySelector(".edCancelar").addEventListener("click", () => ed.remove());
   ed.querySelector(".edGuardar").addEventListener("click", async () => {
-    const t = inTitulo.value.trim(), mi = inMini.value.trim();
+    const t = inTitulo.value.trim(), mi = inMini.value.trim(), su = inSub.value.trim();
     const nuevo = Object.assign({}, META[v.fileName]);
     if (t) nuevo.titulo = t; else delete nuevo.titulo;
     if (mi) nuevo.miniatura = mi; else delete nuevo.miniatura;
+    if (su) nuevo.subtitulo = su; else delete nuevo.subtitulo;
     META[v.fileName] = nuevo;
     try {
       await guardarConfig({ videosMeta: META });

@@ -265,6 +265,19 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 #botonera button:hover{color:#e50914;transform:scale(1.15)}
 #botonera svg{width:26px;height:26px}
 #tiempos{color:#ddd;font-size:13.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* botón de subtítulos: encendido en blanco, apagado en gris */
+#btnCC.apagado{color:#8b8b8b;opacity:.75}
+#btnCC:not(.apagado){color:#fff}
+#btnCC:not(.apagado)::after{
+  content:"";position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);
+  width:16px;height:2.5px;border-radius:2px;background:#e50914;
+}
+#btnCC{position:relative}
+/* aspecto de los subtítulos sobre el video */
+#vid::cue{
+  background:rgba(0,0,0,.72);color:#fff;font-size:1em;line-height:1.35;
+  font-family:'Segoe UI',Arial,sans-serif;text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
 .flexible{flex:1}
 #zonaVolumen{display:flex;align-items:center;gap:6px}
 #volumen{
@@ -523,6 +536,13 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
       </div>
       <span id="tiempos">0:00 / 0:00</span>
       <span class="flexible"></span>
+      <button id="btnCC" title="Subtítulos (C)" style="display:none">
+        <svg viewBox="0 0 24 24">
+          <rect x="2.5" y="4.5" width="19" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M10.2 10.4a2.6 2.6 0 1 0 0 3.2M17.6 10.4a2.6 2.6 0 1 0 0 3.2"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
       <button id="btnPantalla" title="Pantalla completa (F)">
         <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="currentColor"/></svg>
       </button>
@@ -690,6 +710,7 @@ let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador
         v.terminada = !!m.terminada;
         v.titulo = m.titulo || "";
         v.miniatura = m.miniatura || "";
+        v.subtitulo = m.subtitulo || "";
       });
     }
     if (rf.ok) FOTOS = ((await rf.json()).archivos || []).map(f => f.url);
@@ -939,6 +960,60 @@ function posicionDe(clave) {
 let hls = null;
 let cerrandoAdrede = false;   // para no pausar dos veces al cerrar el reproductor
 
+/* ---------- SUBTÍTULOS ---------- */
+const btnCC = document.getElementById("btnCC");
+const CLAVE_SUBS = "jeniflix_subs";
+let urlPistaSub = null;
+
+// vienen activados salvo que ella los haya apagado
+function subsEncendidos() { try { return localStorage.getItem(CLAVE_SUBS) !== "0"; } catch (e) { return true; } }
+
+function aplicarModoSubs() {
+  const on = subsEncendidos();
+  for (const t of vid.textTracks) t.mode = on ? "showing" : "hidden";
+  btnCC.classList.toggle("apagado", !on);
+  btnCC.title = on ? "Ocultar subtítulos (C)" : "Mostrar subtítulos (C)";
+}
+
+function quitarSubtitulos() {
+  vid.querySelectorAll("track").forEach(t => t.remove());
+  if (urlPistaSub) { URL.revokeObjectURL(urlPistaSub); urlPistaSub = null; }
+  btnCC.style.display = "none";
+}
+
+/* Se descarga el archivo y se sirve como blob local: así el navegador no
+   rechaza la pista por venir de otro dominio (Backblaze). */
+async function cargarSubtitulos(url) {
+  quitarSubtitulos();
+  if (!url) return;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return;
+    let txt = await r.text();
+    if (!/^WEBVTT/.test(txt.trim())) {
+      txt = "WEBVTT\n\n" + txt.replace(/\r\n?/g, "\n")
+        .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{1,3})/g, "$1.$2").trim() + "\n";
+    }
+    urlPistaSub = URL.createObjectURL(new Blob([txt], { type: "text/vtt" }));
+    const track = document.createElement("track");
+    track.kind = "subtitles";
+    track.label = "Español";
+    track.srclang = "es";
+    track.default = true;
+    track.src = urlPistaSub;
+    track.addEventListener("load", aplicarModoSubs);
+    vid.appendChild(track);
+    btnCC.style.display = "";
+    aplicarModoSubs();
+    setTimeout(aplicarModoSubs, 400);   // algunos navegadores tardan en registrarla
+  } catch (e) { /* si falla, el video se ve igual sin subtítulos */ }
+}
+
+btnCC.addEventListener("click", () => {
+  try { localStorage.setItem(CLAVE_SUBS, subsEncendidos() ? "0" : "1"); } catch (e) {}
+  aplicarModoSubs();
+});
+
 function cargarScript(url) {
   return new Promise((ok, mal) => {
     const s = document.createElement("script");
@@ -1020,6 +1095,8 @@ async function abrirVideo(v) {
     vid.addEventListener("loadedmetadata", saltar);
   }
 
+  cargarSubtitulos(v.subtitulo);   // si el video trae subtítulos, se activan solos
+
   vid.play().catch(() => {});   // si el navegador bloquea, queda el botón gigante
   moverRaton();
 }
@@ -1038,6 +1115,7 @@ function cerrarReproductor() {
   videoActual = null;
   vid.pause();
   if (hls) { hls.destroy(); hls = null; }
+  quitarSubtitulos();
   vid.removeAttribute("src");
   vid.load();
   playerVideo.classList.remove("abierto", "cargando", "pausado", "ocultar-ui");
@@ -1168,6 +1246,7 @@ addEventListener("keydown", e => {
   else if (e.key === "ArrowDown") { vid.volume = Math.max(0, vid.volume - .1); volumen.value = vid.volume; }
   else if (t === "f") pantallaCompleta();
   else if (t === "m") btnVol.click();
+  else if (t === "c" && btnCC.style.display !== "none") btnCC.click();
   moverRaton();
 });
 function volverAlInicio() {
