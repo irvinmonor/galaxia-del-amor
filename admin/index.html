@@ -538,7 +538,11 @@ $("logPass").addEventListener("keydown", e => { if (e.key === "Enter") $("btnLog
 async function entrar(user) {
   vista("vistaPanel");
   $("mailActual").textContent = user.email;
-  await Promise.all([cargarConfig(), cargarFotos(), cargarVideos()]);
+  // La configuración PRIMERO: de ahí salen los títulos, portadas, el orden
+  // y los videos por link. Si la lista se pinta antes, aparecen los nombres
+  // crudos de los archivos y se pierden de vista los agregados por link.
+  await cargarConfig();
+  await Promise.all([cargarFotos(), cargarVideos()]);
 }
 
 /* ---------- PESTAÑAS ---------- */
