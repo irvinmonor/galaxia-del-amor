@@ -88,6 +88,11 @@ textarea{resize:vertical;min-height:90px}
 .vmini{width:88px;height:50px;object-fit:cover;border-radius:8px;background:#000;flex:none}
 .vinfo{flex:1;min-width:0}
 .vnom{font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vanio{
+  display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.5px;color:#cbb8e8;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  padding:1px 7px;border-radius:5px;vertical-align:1px;margin-left:4px;
+}
 .vmeta{font-size:11.5px;color:#9f86c9;margin-top:3px}
 .vmeta .fin{color:#8dffc4}
 .vacciones{display:flex;gap:5px;flex:none}
@@ -1187,12 +1192,21 @@ $("btnAgregarLink").addEventListener("click", async () => {
   } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
 });
 
+/* "Ven Y Mira 1985" → {titulo:"Ven Y Mira", anio:"1985"} */
+function separarAnio(txt) {
+  const t = String(txt || "").trim();
+  const m = t.match(/^(.*?)[\s\-–—_]*\(?((?:19|20)\d{2})\)?$/);
+  if (m && m[1].trim()) return { titulo: m[1].trim().replace(/[\s\-–—_:]+$/, ""), anio: m[2] };
+  return { titulo: t, anio: "" };
+}
+
 function ordenarVids() {
   VIDS.sort((a, b) => {
     const ma = META[a.fileName] || {}, mb = META[b.fileName] || {};
     if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;   // terminadas al final
-    const oa = ma.orden === undefined ? 9999 : ma.orden;
-    const ob = mb.orden === undefined ? 9999 : mb.orden;
+    // sin orden asignado = recién subida: va hasta arriba, la más nueva primero
+    const oa = ma.orden === undefined ? -1 : ma.orden;
+    const ob = mb.orden === undefined ? -1 : mb.orden;
     return oa - ob;
   });
 }
@@ -1253,7 +1267,9 @@ function pintarVids() {
       <span class="vpos">${i + 1}</span>
       ${mini}
       <div class="vinfo">
-        <div class="vnom">${m.titulo || v.nombre}</div>
+        <div class="vnom">${separarAnio(m.titulo || v.nombre).titulo}${
+          separarAnio(m.titulo || v.nombre).anio
+            ? ' <span class="vanio">' + separarAnio(m.titulo || v.nombre).anio + "</span>" : ""}</div>
         <div class="vmeta">${v.origen === "link" ? (v.embed ? "🔗 incrustado" : "🔗 link directo") : pesoLegible(v.tam || 0)}${m.titulo ? " · título propio" : ""}${m.miniatura ? " · portada propia" : ""}${m.subtitulo ? ' · <b class="sub">💬 subtítulos</b>' : ""}${m.terminada ? ' · <b class="fin">✔ Terminada</b>' : ""}</div>
       </div>
       <div class="vacciones">

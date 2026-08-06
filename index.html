@@ -164,9 +164,19 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 .card-video:hover .play-ico{opacity:1}
 .card-video:hover .play-ico svg{transform:scale(1.12)}
 @media (max-width:700px){ .card-video .play-ico svg{width:58px;height:58px} }
+.card-video .pie-video{
+  position:absolute;left:0;right:0;bottom:0;padding:30px 14px 11px;
+  background:linear-gradient(transparent,rgba(0,0,0,.92));
+}
 .card-video .nombre-video{
-  position:absolute;left:0;right:0;bottom:0;padding:26px 14px 12px;font-size:15.5px;font-weight:600;color:#fff;
-  background:linear-gradient(transparent,rgba(0,0,0,.9));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:15.5px;font-weight:600;color:#fff;line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+.card-video .anio{
+  display:inline-block;margin-top:6px;padding:2px 9px;border-radius:6px;
+  font-size:11.5px;font-weight:700;letter-spacing:.6px;color:#d8d8d8;
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.24);
 }
 #sinVideos{color:#888;font-size:15px;text-align:center;margin-top:60px;display:none}
 .card-video .visto{
@@ -217,6 +227,13 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 #tituloReproduciendo{
   color:#fff;font-size:19px;font-weight:600;text-shadow:0 2px 12px rgba(0,0,0,.9);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  display:flex;align-items:center;gap:10px;min-width:0;
+}
+#tituloReproduciendo > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tituloReproduciendo .anioArriba{
+  flex:none;font-size:12px;font-weight:700;letter-spacing:.6px;color:#d8d8d8;
+  padding:2px 9px;border-radius:6px;text-shadow:none;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
 }
 
 /* botón gigante de play */
@@ -751,8 +768,10 @@ let SB = null;        // cliente de Supabase, para la sala compartida
       VIDEOS.sort((a, b) => {
         const ma = meta[a.fileName] || {}, mb = meta[b.fileName] || {};
         if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;
-        const oa = ma.orden === undefined ? 9999 : ma.orden;
-        const ob = mb.orden === undefined ? 9999 : mb.orden;
+        // sin orden asignado = recién subido: va hasta arriba
+        // (la API las entrega de más nueva a más vieja y el orden se respeta)
+        const oa = ma.orden === undefined ? -1 : ma.orden;
+        const ob = mb.orden === undefined ? -1 : mb.orden;
         return oa - ob;
       });
       VIDEOS.forEach(v => {
@@ -927,6 +946,7 @@ function pintarVideos() {
   if (!VIDEOS.length) { document.getElementById("sinVideos").style.display = "block"; return; }
   document.getElementById("sinVideos").style.display = "none";
   VIDEOS.forEach(v => {
+    const sep = separarAnio(v.titulo || v.nombre);
     const card = document.createElement("div");
     card.className = "card-video" + (v.terminada ? " vista" : "");
     const portada = v.miniatura
@@ -943,7 +963,10 @@ function pintarVideos() {
         </svg>
       </div>
       ${v.terminada ? '<div class="sello"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.6 4.6 12l1.6-1.6 3 3 7-7L17.8 8z" fill="currentColor"/></svg>Ya la vimos</div>' : ""}
-      <div class="nombre-video">${v.titulo || v.nombre}</div>
+      <div class="pie-video">
+        <div class="nombre-video">${sep.titulo}</div>
+        ${sep.anio ? '<span class="anio">' + sep.anio + "</span>" : ""}
+      </div>
       <div class="visto"><span></span></div>`;
     const pos = posicionDe(v.fileName || v.url);
     if (pos) {
@@ -978,6 +1001,31 @@ const btnPlay = document.getElementById("btnPlay"),
       progresoTiempo = document.getElementById("progresoTiempo"),
       bufferTiempo = document.getElementById("bufferTiempo"),
       playGigante = document.getElementById("playGigante");
+
+/* Separa el año del final del título: "Ven Y Mira 1985" → {titulo, anio}.
+   Acepta también entre paréntesis: "Frágiles (2005)". */
+function separarAnio(txt) {
+  const t = String(txt || "").trim();
+  const m = t.match(/^(.*?)[\s\-–—_]*\(?((?:19|20)\d{2})\)?$/);
+  if (m && m[1].trim()) return { titulo: m[1].trim().replace(/[\s\-–—_:]+$/, ""), anio: m[2] };
+  return { titulo: t, anio: "" };
+}
+
+/* título del reproductor: el año va como etiqueta, igual que en las tarjetas */
+function ponerTituloArriba(v) {
+  const cont = document.getElementById("tituloReproduciendo");
+  const s = separarAnio(v.titulo || v.nombre);
+  cont.innerHTML = "";
+  const t = document.createElement("span");
+  t.textContent = s.titulo;
+  cont.appendChild(t);
+  if (s.anio) {
+    const a = document.createElement("span");
+    a.className = "anioArriba";
+    a.textContent = s.anio;
+    cont.appendChild(a);
+  }
+}
 
 function reloj(s) {
   if (!isFinite(s) || s < 0) return "0:00";
@@ -1233,7 +1281,7 @@ async function abrirVideo(v) {
     };
     vid.addEventListener("loadedmetadata", alCargar);
   }
-  document.getElementById("tituloReproduciendo").textContent = v.titulo || v.nombre;
+  ponerTituloArriba(v);
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
   videoActual = v.fileName || v.url;
