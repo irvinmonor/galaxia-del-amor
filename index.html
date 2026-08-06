@@ -1059,6 +1059,7 @@ function posicionDe(clave) {
 
 let hls = null;
 let cerrandoAdrede = false;   // para no pausar dos veces al cerrar el reproductor
+let salidaConBoton = false;   // salieron de pantalla completa con nuestro botón, no pausar
 
 /* ---------- SUBTÍTULOS ---------- */
 const btnCC = document.getElementById("btnCC");
@@ -1421,6 +1422,9 @@ barraTiempo.addEventListener("touchend", () => { arrastrandoBarra = false; }, { 
 
 function pantallaCompleta() {
   if (enPantallaCompleta()) {
+    // salida a propósito con nuestro botón (o la tecla F): NO debe pausar
+    salidaConBoton = true;
+    setTimeout(() => { salidaConBoton = false; }, 700);
     try {
       if (vid.webkitDisplayingFullscreen && vid.webkitExitFullscreen) vid.webkitExitFullscreen();
       else if (salirFS) salirFS.call(document);
@@ -1433,7 +1437,7 @@ document.getElementById("btnPantalla").addEventListener("click", pantallaComplet
 
 /* al salir de pantalla completa se pausa solo */
 function alSalirDePantallaCompleta() {
-  if (cerrandoAdrede) return;
+  if (cerrandoAdrede || salidaConBoton) return;   // salida a propósito: se sigue viendo
   if (!enPantallaCompleta() && playerVideo.classList.contains("abierto") && !vid.paused) {
     vid.pause();
   }
