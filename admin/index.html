@@ -303,6 +303,55 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
     </div>
 
     <div class="tarjeta">
+      <h2>🎉 Modo party — avisos en pantalla</h2>
+      <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 4px">
+        Manda un mensaje que aparece encima de lo que estén viendo, al instante.
+        El video además se sincroniza solo: si uno pausa o adelanta, al otro le pasa lo mismo.
+      </p>
+
+      <label>Foto (opcional) — se muestra dentro del aviso</label>
+      <div id="pZonaFoto">Arrastra una foto, haz clic para elegirla o pégala con Ctrl+V</div>
+      <input type="file" id="pFile" accept="image/*" style="display:none">
+      <div class="fila" style="margin-top:8px">
+        <input type="url" id="pFotoUrl" placeholder="…o pega el link de una imagen" style="flex:1;min-width:200px">
+        <button class="btn sec" id="pQuitarFoto" style="margin:0">Quitar</button>
+      </div>
+
+      <label>Mensaje <small style="color:#7c68a0">— Enter envía, Shift+Enter salta de línea</small></label>
+      <textarea id="pTexto" style="min-height:60px" placeholder="Te amo 💕"></textarea>
+
+      <label>Emojis rápidos (haz clic para agregarlos)</label>
+      <div id="pEmojis"></div>
+
+      <div class="fila" style="gap:18px;align-items:flex-start">
+        <div style="flex:1;min-width:180px">
+          <label>Tamaño de letra: <b id="pTamVal">26</b> px</label>
+          <input type="range" id="pTam" min="14" max="72" value="26" style="width:100%">
+          <label>Dura en pantalla: <b id="pDurVal">6</b> s</label>
+          <input type="range" id="pDur" min="2" max="30" value="6" style="width:100%">
+          <label>Color del texto</label>
+          <input type="color" id="pColor" value="#ffd1ec" style="width:100%;height:38px;padding:3px">
+        </div>
+        <div style="flex:1;min-width:150px">
+          <label>¿Dónde aparece?</label>
+          <div id="pRejilla"></div>
+        </div>
+      </div>
+
+      <label>Así se verá</label>
+      <div id="pPreview"><div id="pCaja"></div></div>
+
+      <button class="btn" id="btnEnviarAviso" style="width:100%">📣 Enviar ahora</button>
+
+      <label style="margin-top:18px">Control del video de todos, en vivo</label>
+      <div class="fila">
+        <button class="btn sec" id="btnPausarTodos" style="margin:0;flex:1">❚❚ Pausar a todos</button>
+        <button class="btn sec" id="btnReanudarTodos" style="margin:0;flex:1">▶ Reanudar a todos</button>
+      </div>
+      <div id="pEstado"></div>
+    </div>
+
+    <div class="tarjeta">
       <h2>✏️ ¿Qué quieres editar?</h2>
       <div class="fila">
         <button class="btn tabbtn activo" id="tabNetflix">🎬 Netflix (videos)</button>
@@ -348,54 +397,6 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         <div id="contadorVideos"></div>
       </div>
 
-      <div class="tarjeta">
-        <h2>🎉 Modo party — avisos en pantalla</h2>
-        <p style="font-size:13px;color:#9f86c9;line-height:1.6;margin:0 0 4px">
-          Manda un mensaje que aparece encima de lo que estén viendo, al instante.
-          El video además se sincroniza solo: si uno pausa o adelanta, al otro le pasa lo mismo.
-        </p>
-
-        <label>Foto (opcional) — se muestra dentro del aviso</label>
-        <div id="pZonaFoto">Arrastra una foto, haz clic para elegirla o pégala con Ctrl+V</div>
-        <input type="file" id="pFile" accept="image/*" style="display:none">
-        <div class="fila" style="margin-top:8px">
-          <input type="url" id="pFotoUrl" placeholder="…o pega el link de una imagen" style="flex:1;min-width:200px">
-          <button class="btn sec" id="pQuitarFoto" style="margin:0">Quitar</button>
-        </div>
-
-        <label>Mensaje <small style="color:#7c68a0">— Enter envía, Shift+Enter salta de línea</small></label>
-        <textarea id="pTexto" style="min-height:60px" placeholder="Te amo 💕"></textarea>
-
-        <label>Emojis rápidos (haz clic para agregarlos)</label>
-        <div id="pEmojis"></div>
-
-        <div class="fila" style="gap:18px;align-items:flex-start">
-          <div style="flex:1;min-width:180px">
-            <label>Tamaño de letra: <b id="pTamVal">26</b> px</label>
-            <input type="range" id="pTam" min="14" max="72" value="26" style="width:100%">
-            <label>Dura en pantalla: <b id="pDurVal">6</b> s</label>
-            <input type="range" id="pDur" min="2" max="30" value="6" style="width:100%">
-            <label>Color del texto</label>
-            <input type="color" id="pColor" value="#ffd1ec" style="width:100%;height:38px;padding:3px">
-          </div>
-          <div style="flex:1;min-width:150px">
-            <label>¿Dónde aparece?</label>
-            <div id="pRejilla"></div>
-          </div>
-        </div>
-
-        <label>Así se verá</label>
-        <div id="pPreview"><div id="pCaja"></div></div>
-
-        <button class="btn" id="btnEnviarAviso" style="width:100%">📣 Enviar ahora</button>
-
-        <label style="margin-top:18px">Control del video de todos, en vivo</label>
-        <div class="fila">
-          <button class="btn sec" id="btnPausarTodos" style="margin:0;flex:1">❚❚ Pausar a todos</button>
-          <button class="btn sec" id="btnReanudarTodos" style="margin:0;flex:1">▶ Reanudar a todos</button>
-        </div>
-        <div id="pEstado"></div>
-      </div>
     </div>
 
     <!-- ============ SECCIÓN GALAXIA ============ -->
