@@ -137,10 +137,14 @@ textarea{resize:vertical;min-height:90px}
 .histFila.incompleto .histMeta{color:#ffcc7a}
 .histBtns{display:flex;gap:5px;flex:none}
 /* modo party */
-#pEmojis{display:flex;flex-wrap:wrap;gap:6px}
+/* 20 emojis en filas exactas: 10 por fila en pantalla ancha, 5 en angosta.
+   Así nunca queda uno solo colgando abajo. */
+#pEmojis{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+@media (max-width:620px){ #pEmojis{grid-template-columns:repeat(5,1fr)} }
 #pEmojis .emo{
   border:1px solid var(--borde);background:rgba(0,0,0,.3);border-radius:9px;
-  width:36px;height:36px;font-size:18px;cursor:pointer;transition:all .15s;
+  width:100%;aspect-ratio:1;font-size:17px;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;padding:0;
 }
 #pEmojis .emo:hover{background:var(--rosa2);transform:translateY(-2px)}
 #pRejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:170px}
@@ -351,12 +355,6 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
           El video además se sincroniza solo: si uno pausa o adelanta, al otro le pasa lo mismo.
         </p>
 
-        <label>Mensaje</label>
-        <textarea id="pTexto" style="min-height:60px" placeholder="Te amo 💕"></textarea>
-
-        <label>Emojis rápidos (haz clic para agregarlos)</label>
-        <div id="pEmojis"></div>
-
         <label>Foto (opcional) — se muestra dentro del aviso</label>
         <div id="pZonaFoto">Arrastra una foto, haz clic para elegirla o pégala con Ctrl+V</div>
         <input type="file" id="pFile" accept="image/*" style="display:none">
@@ -364,6 +362,12 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
           <input type="url" id="pFotoUrl" placeholder="…o pega el link de una imagen" style="flex:1;min-width:200px">
           <button class="btn sec" id="pQuitarFoto" style="margin:0">Quitar</button>
         </div>
+
+        <label>Mensaje <small style="color:#7c68a0">— Enter envía, Shift+Enter salta de línea</small></label>
+        <textarea id="pTexto" style="min-height:60px" placeholder="Te amo 💕"></textarea>
+
+        <label>Emojis rápidos (haz clic para agregarlos)</label>
+        <div id="pEmojis"></div>
 
         <div class="fila" style="gap:18px;align-items:flex-start">
           <div style="flex:1;min-width:180px">
@@ -1767,6 +1771,15 @@ function pintarVistaPrevia() {
   ["pTexto", "pTam", "pDur", "pColor"].forEach(id => {
     $(id).addEventListener("input", pintarVistaPrevia);
   });
+
+  // Enter manda el aviso; Shift+Enter escribe otra línea
+  $("pTexto").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      $("btnEnviarAviso").click();
+    }
+  });
+
   pintarVistaPrevia();
 })();
 
