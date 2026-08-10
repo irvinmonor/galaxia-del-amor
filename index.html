@@ -976,7 +976,7 @@ function pintarVideos() {
   const vistas = VIDEOS.filter(v => v.terminada).length;
   const btnV = document.getElementById("btnVistas");
   btnV.style.display = vistas ? "" : "none";
-  btnV.textContent = (mostrarVistas ? "Ocultar" : "Ver") + " las ya vistas (" + vistas + ")";
+  btnV.textContent = (mostrarVistas ? "Ocultar vistas (" : "Vistas (") + vistas + ")";
   btnV.classList.toggle("activo", mostrarVistas);
   const sinNada = document.getElementById("sinVideos");
   if (!VIDEOS.length) { sinNada.textContent = "Aún no hay videos… pronto llegarán los primeros 🎬"; sinNada.style.display = "block"; return; }
