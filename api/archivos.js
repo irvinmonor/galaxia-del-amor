@@ -35,6 +35,7 @@ export default async function handler(req, res) {
         url: base + f.fileName.split("/").map(encodeURIComponent).join("/"),
         tipo: f.contentType || "",
         tam: f.contentLength || 0,
+        subido: f.uploadTimestamp || 0,
         fileName: f.fileName,
         fileId: f.fileId
       }));

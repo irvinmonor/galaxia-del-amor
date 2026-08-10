@@ -88,6 +88,23 @@ textarea{resize:vertical;min-height:90px}
 .vid button:hover{background:#e02451;color:#fff}
 .vid .nom{position:absolute;left:0;right:0;bottom:0;font-size:11px;color:#ddd;padding:10px 6px 4px;background:linear-gradient(transparent,rgba(0,0,0,.85));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #contadorVideos{font-size:13px;color:#9f86c9;margin-top:10px}
+.barraVideos{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.barraVideos input[type=search]{
+  flex:2;min-width:180px;padding:10px 14px;border-radius:12px;border:1px solid var(--borde);
+  background:#0d0122;color:#fff;font-size:14px;font-family:inherit;outline:none;
+}
+.barraVideos input[type=search]:focus{border-color:var(--rosa)}
+.barraVideos select{
+  flex:1;min-width:150px;padding:10px 12px;border-radius:12px;border:1px solid var(--borde);
+  background:#0d0122;color:#fff;font-size:13.5px;font-family:inherit;outline:none;cursor:pointer;
+}
+.barraVideos select:focus{border-color:var(--rosa)}
+.avisoVista{
+  font-size:12.5px;color:#ffcc7a;margin-top:9px;padding:8px 12px;border-radius:9px;
+  background:rgba(255,180,60,.09);border:1px solid rgba(255,180,60,.32);
+}
+.vbtn:disabled{opacity:.3;cursor:not-allowed}
+.vbtn:disabled:hover{background:rgba(0,0,0,.35);color:#ffd1ec;transform:none}
 /* lista ordenable de videos */
 #gridVideosAdmin{display:block;margin-top:16px}
 .vfila{
@@ -417,6 +434,24 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
           </div>
           <div id="linkAviso"></div>
         </div>
+        <div class="barraVideos">
+          <input type="search" id="buscarVideo" placeholder="🔎 Buscar película…">
+          <select id="filtroVideos">
+            <option value="todas">Todas</option>
+            <option value="pendientes">Solo pendientes</option>
+            <option value="terminadas">Solo terminadas</option>
+          </select>
+          <select id="ordenVideos">
+            <option value="manual">Mi orden (arrastrable)</option>
+            <option value="az">Título A → Z</option>
+            <option value="za">Título Z → A</option>
+            <option value="nuevas">Subidas: más nuevas</option>
+            <option value="viejas">Subidas: más antiguas</option>
+            <option value="grandes">Tamaño: mayor a menor</option>
+            <option value="chicas">Tamaño: menor a mayor</option>
+          </select>
+        </div>
+        <div id="avisoOrden"></div>
         <div id="gridVideosAdmin"></div>
         <div id="contadorVideos"></div>
       </div>
@@ -861,6 +896,11 @@ async function cargarFotos() {
 
 /* ---------- VIDEOS (modo Netflix) ---------- */
 const zonaV = $("zonaDropVideo"), inputVideos = $("inputVideos"), gridV = $("gridVideosAdmin");
+
+["buscarVideo", "filtroVideos", "ordenVideos"].forEach(id => {
+  $(id).addEventListener("input", pintarVids);
+  $(id).addEventListener("change", pintarVids);
+});
 
 zonaV.addEventListener("click", () => inputVideos.click());
 zonaV.addEventListener("dragover", e => { e.preventDefault(); zonaV.classList.add("encima"); });
@@ -1491,9 +1531,46 @@ async function cargarVideos(fresco) {
   pintarVids();
 }
 
+/* Devuelve la lista que se va a mostrar: filtrada, buscada y ordenada.
+   VIDS conserva siempre el orden real; esto es solo la vista. */
+function vidsAMostrar() {
+  const busca = ($("buscarVideo").value || "").trim().toLowerCase();
+  const filtro = $("filtroVideos").value;
+  const orden = $("ordenVideos").value;
+
+  let lista = VIDS.slice();
+
+  if (filtro === "pendientes") lista = lista.filter(v => !(META[v.fileName] || {}).terminada);
+  if (filtro === "terminadas") lista = lista.filter(v => (META[v.fileName] || {}).terminada);
+
+  if (busca) {
+    lista = lista.filter(v => {
+      const t = ((META[v.fileName] || {}).titulo || v.nombre || "").toLowerCase();
+      return t.indexOf(busca) > -1;
+    });
+  }
+
+  const titulo = v => ((META[v.fileName] || {}).titulo || v.nombre || "").toLowerCase();
+  if (orden === "az") lista.sort((a, b) => titulo(a).localeCompare(titulo(b), "es"));
+  else if (orden === "za") lista.sort((a, b) => titulo(b).localeCompare(titulo(a), "es"));
+  else if (orden === "nuevas") lista.sort((a, b) => (b.subido || 0) - (a.subido || 0));
+  else if (orden === "viejas") lista.sort((a, b) => (a.subido || 0) - (b.subido || 0));
+  else if (orden === "grandes") lista.sort((a, b) => (b.tam || 0) - (a.tam || 0));
+  else if (orden === "chicas") lista.sort((a, b) => (a.tam || 0) - (b.tam || 0));
+
+  return { lista, manual: orden === "manual" && !busca && filtro === "todas" };
+}
+
 function pintarVids() {
   gridV.innerHTML = "";
-  VIDS.forEach((v, i) => {
+  const { lista: mostradas, manual } = vidsAMostrar();
+
+  $("avisoOrden").textContent = manual ? ""
+    : "Vista temporal: para mover películas con ▲▼ vuelve a «Mi orden», sin filtro ni búsqueda.";
+  $("avisoOrden").className = manual ? "" : "avisoVista";
+
+  mostradas.forEach(v => {
+    const i = VIDS.indexOf(v);
     const m = META[v.fileName] || {};
     const fila = document.createElement("div");
     fila.className = "vfila" + (m.terminada ? " terminada" : "");
@@ -1513,8 +1590,8 @@ function pintarVids() {
       </div>
       <div class="vacciones">
         <button class="vbtn" data-a="editar" title="Título y portada">✏️</button>
-        <button class="vbtn" data-a="subir"  title="Subir en la lista">▲</button>
-        <button class="vbtn" data-a="bajar"  title="Bajar en la lista">▼</button>
+        <button class="vbtn" data-a="subir"  title="Subir en la lista"${manual ? "" : " disabled"}>▲</button>
+        <button class="vbtn" data-a="bajar"  title="Bajar en la lista"${manual ? "" : " disabled"}>▼</button>
         <button class="vbtn" data-a="fin"    title="Marcar como terminada">${m.terminada ? "↩" : "✔"}</button>
         <button class="vbtn" data-a="link"   title="Copiar link">🔗</button>
         <button class="vbtn peligro" data-a="borrar" title="Borrar">🗑</button>
@@ -1525,9 +1602,21 @@ function pintarVids() {
     fila.querySelector('[data-a=bajar]').addEventListener("click", () => mover(i, 1));
     fila.querySelector('[data-a=link]').addEventListener("click", () => copiar(v.url, "video"));
     fila.querySelector('[data-a=fin]').addEventListener("click", async () => {
-      META[v.fileName] = Object.assign({}, META[v.fileName], { terminada: !m.terminada });
-      ordenarVids(); pintarVids();
-      await guardarOrden(m.terminada ? "Marcada como pendiente 🍿" : "¡Marcada como terminada! ✔");
+      const pasaATerminada = !m.terminada;
+      META[v.fileName] = Object.assign({}, META[v.fileName], { terminada: pasaATerminada });
+      // al terminarla se va al final de todo, detrás de las que ya estaban
+      // terminadas; al volverla a pendiente, al final de las pendientes
+      const pos = VIDS.indexOf(v);
+      if (pos > -1) {
+        VIDS.splice(pos, 1);
+        if (pasaATerminada) VIDS.push(v);
+        else {
+          const primeraTerminada = VIDS.findIndex(x => (META[x.fileName] || {}).terminada);
+          VIDS.splice(primeraTerminada < 0 ? VIDS.length : primeraTerminada, 0, v);
+        }
+      }
+      pintarVids();
+      await guardarOrden(pasaATerminada ? "¡Marcada como terminada! ✔" : "Marcada como pendiente 🍿");
     });
     fila.querySelector('[data-a=borrar]').addEventListener("click", async () => {
       if (!confirm("¿Borrar «" + (m.titulo || v.nombre) + "» del modo Netflix?")) return;
@@ -1562,7 +1651,9 @@ function pintarVids() {
 
   const term = VIDS.filter(v => (META[v.fileName] || {}).terminada).length;
   $("contadorVideos").textContent = VIDS.length
-    ? VIDS.length + " video(s) · " + term + " terminado(s) · así es el orden en Jeniflix"
+    ? (mostradas.length === VIDS.length
+        ? VIDS.length + " video(s) · " + term + " terminado(s)" + (manual ? " · así es el orden en Jeniflix" : "")
+        : "Mostrando " + mostradas.length + " de " + VIDS.length + " · " + term + " terminado(s)")
     : "Aún no hay videos — sube el primero 🎬";
 }
 
