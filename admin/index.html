@@ -1866,7 +1866,6 @@ async function mandarEstado(accion) {
   } catch (e) { estadoParty("No se pudo: " + e.message, true); }
 }
 $("btnRecargarTodos").addEventListener("click", async () => {
-  if (!confirm("Se recargará la página de quien esté viendo el sitio.\n(No corta una película en reproducción.)\n\n¿Continuar?")) return;
   const canal = salaAdmin();
   if (!canal) return estadoParty("No hay conexión con la sala.", true);
   try {
