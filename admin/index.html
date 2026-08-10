@@ -830,14 +830,53 @@ async function sha1De(blob) {
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
-function rutaLimpia(file, carpeta) {
+/* De la URL de Backblaze saca la ruta dentro del bucket:
+   …/file/<bucket>/videos/xxx.mp4  →  videos/xxx.mp4 */
+function claveDesdeUrl(url) {
+  const partes = (String(url || "").split("/file/")[1] || "").split("/");
+  partes.shift();                                  // quitar el nombre del bucket
+  return partes.map(decodeURIComponent).join("/");
+}
+
+/* Título a partir del nombre del archivo, TAL CUAL lo escribiste:
+   "El Siniestro 2010.mp4" → "El Siniestro 2010" */
+function tituloDesdeArchivo(nombre) {
+  return String(nombre || "")
+    .replace(/\.[^.]+$/, "")            // quitar la extensión
+    .replace(/[._]+/g, " ")             // puntos y guiones bajos a espacios
+    .replace(/\((web|subs?)\)/gi, "")   // lo que agrega el conversor
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* "El Siniestro 2010 v2" → "el-siniestro-2010-v2" (para el nombre del archivo) */
+function aSlug(txt) {
+  return String(txt || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // quitar acentos
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "").replace(/-+$/, "");
+}
+
+/* Si ya existe una película con ese nombre, la nueva pasa a ser v2, v3… */
+function nombreConVersion(base, usados) {
+  let titulo = base, n = 1;
+  while (usados.has(titulo.toLowerCase())) { n++; titulo = base + " v" + n; }
+  usados.add(titulo.toLowerCase());
+  return titulo;
+}
+
+function rutaLimpia(file, carpeta, base) {
+  const ext = (file.name.match(/\.[^.]+$/) || [""])[0].toLowerCase();
+  const s = aSlug(base);
+  // con nombre propio se guarda legible: videos/el-siniestro-2010-v2.mp4
+  if (s) return carpeta + "/" + s + ext;
   const limpio = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
   return carpeta + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "-" + limpio;
 }
 
 /* Archivos grandes: se parten en trozos y se suben con la API multiparte de B2 (hasta 10 TB) */
-async function subirGrandeAB2(file, carpeta, onProgreso) {
-  const ruta = rutaLimpia(file, carpeta);
+async function subirGrandeAB2(file, carpeta, onProgreso, base) {
+  const ruta = rutaLimpia(file, carpeta, base);
   const tok = await tokenSesion();
   const ini = await pedirJSON("/api/subir?accion=iniciar", {
     method: "POST",
@@ -908,13 +947,13 @@ async function subirGrandeAB2(file, carpeta, onProgreso) {
   return ini.base + ruta.split("/").map(encodeURIComponent).join("/");
 }
 
-async function subirAB2(file, carpeta, onProgreso, intentos = 4) {
+async function subirAB2(file, carpeta, onProgreso, intentos = 4, base) {
   if (file.size > LIMITE_B2) {
     throw new Error("pesa " + pesoLegible(file.size) + ", el máximo por archivo es 10 TB");
   }
-  if (file.size > UMBRAL_MULTIPARTE) return subirGrandeAB2(file, carpeta, onProgreso);
+  if (file.size > UMBRAL_MULTIPARTE) return subirGrandeAB2(file, carpeta, onProgreso, base);
 
-  const ruta = rutaLimpia(file, carpeta);
+  const ruta = rutaLimpia(file, carpeta, base);
   const sha = await sha1De(file);
 
   let ultimoError;
@@ -1027,14 +1066,15 @@ function pintarCola() {
 }
 
 /* Agrega archivos a la cola. Devuelve cuántos entraron. */
-function agregarACola(archivos, carpeta) {
+function agregarACola(archivos, carpeta, titulos) {
   const repetidos = [];
   let entraron = 0;
   for (const f of archivos) {
     const k = claveArchivo(f);
     if (enCola.has(k)) { repetidos.push(f.name); continue; }
     enCola.add(k);
-    COLA.push({ file: f, carpeta, clave: k, hechos: 0, listo: false, error: null });
+    COLA.push({ file: f, carpeta, clave: k, hechos: 0, listo: false, error: null,
+                base: titulos ? titulos.get(f) : null });
     entraron++;
   }
   if (repetidos.length) {
@@ -1053,7 +1093,8 @@ async function correrCola(titulo) {
     while (cursorCola < COLA.length) {
       const item = COLA[cursorCola++];
       try {
-        await subirAB2(item.file, item.carpeta, p => { item.hechos = item.file.size * p / 100; pintarCola(); });
+        item.url = await subirAB2(item.file, item.carpeta,
+          p => { item.hechos = item.file.size * p / 100; pintarCola(); }, 4, item.base);
         item.hechos = item.file.size; item.listo = true;
       } catch (e) {
         item.hechos = item.file.size; item.error = e.message;
@@ -1067,6 +1108,24 @@ async function correrCola(titulo) {
   while (cursorCola < COLA.length) {
     const faltan = COLA.length - cursorCola;
     await Promise.all(Array.from({ length: Math.min(SUBIDAS_PARALELAS, faltan) }, trabajador));
+  }
+
+  // Las películas recién subidas toman como título el nombre del archivo,
+  // respetando mayúsculas: "El Siniestro 2010.mp4" → "El Siniestro 2010".
+  // (Si no, quedaría el nombre interno con el código que se le pone para
+  //  que no se repita: "irjgir el siniestro 2010")
+  const recienSubidas = COLA.filter(i => i.listo && i.carpeta === "videos" && i.url);
+  if (recienSubidas.length) {
+    let algo = false;
+    recienSubidas.forEach(i => {
+      const clave = claveDesdeUrl(i.url);
+      const titulo = i.base || tituloDesdeArchivo(i.file.name);
+      if (!clave || !titulo) return;
+      if (META[clave] && META[clave].titulo) return;      // ya tenía uno puesto: no se toca
+      META[clave] = Object.assign({}, META[clave], { titulo });
+      algo = true;
+    });
+    if (algo) { try { await guardarConfig({ videosMeta: META }); } catch (e) {} }
   }
 
   const ok = COLA.filter(i => i.listo).length;
@@ -1128,7 +1187,17 @@ async function subirVideos(files) {
       "Estos ya están subidos:\n\n• " + repes.map(f => f.name).join("\n• ") +
       "\n\n¿Subirlos otra vez de todas formas?")) { inputVideos.value = ""; return; }
 
-  if (!agregarACola(lista, "videos")) { inputVideos.value = ""; return; }
+  // Nombre de cada película: el del archivo, tal cual lo escribiste.
+  // Si ya hay una con ese nombre, la nueva pasa a ser v2, v3…
+  const usados = new Set();
+  VIDS.forEach(v => {
+    const t = (META[v.fileName] || {}).titulo || v.nombre || "";
+    if (t) usados.add(t.toLowerCase());
+  });
+  const titulos = new Map();
+  lista.forEach(f => titulos.set(f, nombreConVersion(tituloDesdeArchivo(f.name), usados)));
+
+  if (!agregarACola(lista, "videos", titulos)) { inputVideos.value = ""; return; }
   const res = await correrCola("Subiendo video" + (lista.length > 1 ? "s" : "") + "…");
   inputVideos.value = "";
   if (!res) return;                       // ya había una cola corriendo
@@ -1495,10 +1564,7 @@ function abrirEditor(fila, v) {
     try {
       panelSub.abrir("Subiendo el video nuevo…", f.size);
       const nuevaUrl = await subirAB2(f, "videos", p => panelSub.actualizar(p, f.name));
-      // la clave del nuevo archivo es su ruta dentro del bucket: .../file/<bucket>/videos/xxx.mp4
-      const partes = (nuevaUrl.split("/file/")[1] || "").split("/");
-      partes.shift();                                   // quitar el nombre del bucket
-      const nuevaClave = partes.map(decodeURIComponent).join("/");
+      const nuevaClave = claveDesdeUrl(nuevaUrl);
       if (!nuevaClave) throw new Error("no se pudo leer la ruta del archivo subido");
       const listaLinks = await trasladarDatos(nuevaClave);
       await guardarConfig({ videosLink: listaLinks, videosMeta: META });
