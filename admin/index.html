@@ -510,12 +510,14 @@ const $ = id => document.getElementById(id);
 const msg = $("msg");
 let sb = null;
 
-function aviso(texto, tipo) {
+function aviso(texto, tipo, sinScroll) {
   msg.textContent = texto;
   msg.className = "aviso " + (tipo || "ok");
   clearTimeout(aviso._t);
   aviso._t = setTimeout(() => { msg.className = "aviso"; }, 5000);
-  scrollTo({ top: 0, behavior: "smooth" });
+  // sinScroll: para acciones de la lista (ordenar, marcar) que no deben
+  // mandarte al principio de la página cada vez
+  if (!sinScroll) scrollTo({ top: 0, behavior: "smooth" });
 }
 function vista(v) {
   ["vistaSinConfig","vistaLogin","vistaPanel"].forEach(x => $(x).classList.add("oculto"));
@@ -1227,8 +1229,9 @@ async function guardarOrden(mensaje) {
     nueva[v.fileName] = Object.assign({}, META[v.fileName], { orden: i });
   });
   META = nueva;
-  try { await guardarConfig({ videosMeta: META }); aviso(mensaje || "Orden guardado ✅"); }
-  catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+  // sin scroll: reordenar no debe mandarte al principio de la página
+  try { await guardarConfig({ videosMeta: META }); aviso(mensaje || "Orden guardado ✅", null, true); }
+  catch (e) { aviso("No se pudo guardar: " + e.message, "error", true); }
 }
 
 async function copiar(texto, queEs) {
@@ -1638,9 +1641,19 @@ async function mover(i, dir) {
   // no dejar mezclar terminadas con pendientes
   const ta = !!(META[VIDS[i].fileName] || {}).terminada;
   const tb = !!(META[VIDS[j].fileName] || {}).terminada;
-  if (ta !== tb) return aviso("Las terminadas siempre van al final. Quítale la palomita para moverla. 🙂", "error");
+  if (ta !== tb) return aviso("Las terminadas siempre van al final. Quítale la palomita para moverla. 🙂", "error", true);
+
+  const scrollAntes = window.scrollY;
   [VIDS[i], VIDS[j]] = [VIDS[j], VIDS[i]];
   pintarVids();
+  // la lista se vuelve a dibujar: hay que devolver la vista y el foco a su sitio,
+  // si no la página se va al principio y hay que buscar la película otra vez
+  window.scrollTo({ top: scrollAntes });
+  const fila = gridV.children[j];
+  if (fila) {
+    const btn = fila.querySelector(dir < 0 ? "[data-a=subir]" : "[data-a=bajar]");
+    if (btn) { try { btn.focus({ preventScroll: true }); } catch (e) {} }
+  }
   await guardarOrden();
 }
 

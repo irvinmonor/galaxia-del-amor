@@ -179,6 +179,31 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
   background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.24);
 }
 #sinVideos{color:#888;font-size:15px;text-align:center;margin-top:60px;display:none}
+#flixCabecera{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:10px 0 16px}
+#flixCabecera h3{margin:0}
+#btnVistas{
+  border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#ddd;
+  padding:8px 16px;border-radius:999px;font-size:13.5px;cursor:pointer;transition:all .2s;
+}
+#btnVistas:hover{background:rgba(255,255,255,.18);color:#fff}
+#btnVistas.activo{background:rgba(20,120,60,.85);border-color:rgba(74,222,128,.6);color:#dcffe9}
+
+/* ---- para ver en la tele con el control ---- */
+.card-video:focus,#btnVistas:focus,#btnVolverFlix:focus,.logo-flix:focus,
+#controles button:focus,#cerrarVideo:focus,.tile:focus{
+  outline:3px solid #fff;outline-offset:3px;
+}
+.card-video:focus{transform:scale(1.06);z-index:3}
+.card-video:focus-visible{outline:4px solid #e50914;outline-offset:4px}
+/* algunas teles y iOS pintan su propio boton de play gigante sobre el video:
+   lo quitamos para que no tape la portada ni el reproductor */
+video::-webkit-media-controls,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button{
+  display:none!important;-webkit-appearance:none;opacity:0!important;
+}
 .card-video .visto{
   display:none;position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.3);
 }
@@ -522,7 +547,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
   <p id="subtituloIntro">Hice una galaxia entera solo para ti…<br>porque ni todo el universo alcanza para decirte cuánto te amo.</p>
   <p class="pregunta-intro">¿Qué quieres ver hoy?</p>
   <div id="tiles">
-    <div class="tile tile-n" id="tileNetflix">
+    <div class="tile tile-n" id="tileNetflix" tabindex="0" role="button">
       <div class="tile-cara">
         <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -536,7 +561,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
       </div>
       <span id="etiquetaFlix">Películas</span>
     </div>
-    <div class="tile tile-q" id="tileSorpresa">
+    <div class="tile tile-q" id="tileSorpresa" tabindex="0" role="button">
       <div class="tile-cara">
         <div class="candado">🔒</div>
         <div class="interrogacion">?</div>
@@ -553,7 +578,10 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
     <button id="btnVolverFlix">← Inicio</button>
   </header>
   <div id="flixContenido">
-    <h3 id="flixTitulo">Nuestros videos 💕</h3>
+    <div id="flixCabecera">
+      <h3 id="flixTitulo">Nuestros videos 💕</h3>
+      <button id="btnVistas" tabindex="0"></button>
+    </div>
     <div id="gridVideos"></div>
     <p id="sinVideos">Aún no hay videos… pronto llegarán los primeros 🎬</p>
   </div>
@@ -941,11 +969,23 @@ const gridVideos = document.getElementById("gridVideos");
 const playerVideo = document.getElementById("playerVideo");
 const vid = document.getElementById("vid");
 
+let mostrarVistas = false;   // por defecto solo se ven las pendientes
+
 function pintarVideos() {
   gridVideos.innerHTML = "";
-  if (!VIDEOS.length) { document.getElementById("sinVideos").style.display = "block"; return; }
-  document.getElementById("sinVideos").style.display = "none";
-  VIDEOS.forEach(v => {
+  const vistas = VIDEOS.filter(v => v.terminada).length;
+  const btnV = document.getElementById("btnVistas");
+  btnV.style.display = vistas ? "" : "none";
+  btnV.textContent = (mostrarVistas ? "Ocultar" : "Ver") + " las ya vistas (" + vistas + ")";
+  btnV.classList.toggle("activo", mostrarVistas);
+  const sinNada = document.getElementById("sinVideos");
+  if (!VIDEOS.length) { sinNada.textContent = "Aún no hay videos… pronto llegarán los primeros 🎬"; sinNada.style.display = "block"; return; }
+  const pendientes = VIDEOS.filter(v => !v.terminada).length;
+  if (!pendientes && !mostrarVistas) {
+    sinNada.textContent = "¡Ya las vimos todas! 💖 Toca el botón de arriba para volver a verlas.";
+    sinNada.style.display = "block";
+  } else sinNada.style.display = "none";
+  VIDEOS.filter(v => mostrarVistas || !v.terminada).forEach(v => {
     const sep = separarAnio(v.titulo || v.nombre);
     const card = document.createElement("div");
     card.className = "card-video" + (v.terminada ? " vista" : "");
@@ -980,7 +1020,14 @@ function pintarVideos() {
       if (tmp) tmp.addEventListener("loadedmetadata", () => pintarBarra(tmp.duration));
       else pintarBarra(pos.d);
     }
+    // en la tele se navega con las flechas del control: la tarjeta debe poder
+    // recibir el foco y abrirse con OK/Enter
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
     card.addEventListener("click", () => abrirVideo(v));
+    card.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " " || e.keyCode === 13) { e.preventDefault(); abrirVideo(v); }
+    });
     gridVideos.appendChild(card);
   });
 }
@@ -1488,20 +1535,48 @@ document.getElementById("btnVolverFlix").addEventListener("click", volverAlInici
 document.getElementById("logoFlix").addEventListener("click", volverAlInicio);
 
 /* --- cuadro Netflix: tudum + animación de la N --- */
+/* deja el foco en la primera película, para poder seguir con el control de la tele */
+function enfocarPrimera() {
+  const c = gridVideos.querySelector(".card-video");
+  if (c) setTimeout(() => { try { c.focus({ preventScroll: true }); } catch (e) { c.focus(); } }, 120);
+}
+
 function entrarJeniflix(conAnimacion) {
   recordarPantalla("jeniflix");
   pintarVideos();
   document.getElementById("intro").classList.add("oculto");
-  if (!conAnimacion) return netflixUI.classList.add("abierta");
+  if (!conAnimacion) { netflixUI.classList.add("abierta"); enfocarPrimera(); return; }
   const ov = document.getElementById("nOverlay");
   sonidoTudum();
   ov.classList.add("activa");
   setTimeout(() => {
     netflixUI.classList.add("abierta");   // primero se muestra Jeniflix…
     ov.classList.remove("activa");        // …y hasta entonces se quita el fondo negro
+    enfocarPrimera();
   }, 2600);
 }
 document.getElementById("tileNetflix").addEventListener("click", () => entrarJeniflix(true));
+
+/* en la tele: la pantalla sigue al foco, y si no hay nada enfocado
+   las flechas del control empiezan por la primera película */
+gridVideos.addEventListener("focusin", e => {
+  const c = e.target.closest ? e.target.closest(".card-video") : null;
+  if (c) { try { c.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (err) { c.scrollIntoView(); } }
+});
+netflixUI.addEventListener("keydown", e => {
+  const flechas = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+  if (!flechas.includes(e.key)) return;
+  const enFoco = document.activeElement;
+  const yaEstaDentro = enFoco && (enFoco.closest && (enFoco.closest("#netflixUI")));
+  if (!yaEstaDentro) { e.preventDefault(); enfocarPrimera(); }
+});
+
+document.getElementById("btnVistas").addEventListener("click", () => {
+  mostrarVistas = !mostrarVistas;
+  pintarVideos();
+  const c = gridVideos.querySelector(".card-video");
+  if (c) c.focus();      // deja el foco en una película, para seguir con el control
+});
 
 /* --- salir de la galaxia y volver a la portada --- */
 document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
