@@ -348,6 +348,14 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
         <button class="btn sec" id="btnPausarTodos" style="margin:0;flex:1">❚❚ Pausar a todos</button>
         <button class="btn sec" id="btnReanudarTodos" style="margin:0;flex:1">▶ Reanudar a todos</button>
       </div>
+      <div class="fila" style="margin-top:8px">
+        <button class="btn sec" id="btnRecargarTodos" style="margin:0;flex:1">🔄 Recargar la pantalla de todos</button>
+      </div>
+      <p style="font-size:12px;color:#7c68a0;line-height:1.5;margin:8px 0 0">
+        Los títulos, portadas y subtítulos ya se actualizan solos en sus pantallas.
+        Este botón es por si algo se quedó atorado: recarga la página de quien esté
+        dentro, sin cortar una película que estén viendo.
+      </p>
       <div id="pEstado"></div>
     </div>
 
@@ -568,7 +576,7 @@ $("btnGuardarFlix").addEventListener("click", async () => {
       flixEtiqueta: $("fFlixEtiqueta").value.trim()
     });
     aviso("Encabezado guardado ✅");
-  } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+  } catch (e) { aviso("No se pudo guardar: " + e.message, "error", true); }
   b.disabled = false;
 });
 
@@ -609,6 +617,9 @@ async function guardarConfig(parcial) {
   CONFIG_DATA = Object.assign({}, CONFIG_DATA, parcial);
   const { error } = await sb.from("galaxia_config").upsert({ id: 1, data: CONFIG_DATA });
   if (error) throw new Error(error.message);
+  // avisar a quien esté en el sitio para que lo vea al momento, sin recargar
+  try { salaAdmin() && salaAdmin().send({ type: "broadcast", event: "refrescar", payload: {} }); }
+  catch (e) {}
 }
 
 $("btnGuardar").addEventListener("click", async () => {
@@ -1200,7 +1211,7 @@ $("btnAgregarLink").addEventListener("click", async () => {
     }
     aviso("Video agregado por link 🔗");
     cargarVideos(true);
-  } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+  } catch (e) { aviso("No se pudo guardar: " + e.message, "error", true); }
 });
 
 /* "Ven Y Mira 1985" → {titulo:"Ven Y Mira", anio:"1985"} */
@@ -1541,7 +1552,7 @@ function abrirEditor(fila, v) {
           META[f.fileName] = Object.assign({}, META[f.fileName], datos);
           const links = v.origen === "link" ? videosLink().filter(l => l.id !== v.fileName) : videosLink();
           await guardarConfig({ videosLink: links, videosMeta: META });
-          aviso("Listo: ahora usa ese archivo.");
+          aviso("Listo: ahora usa ese archivo.", null, true);
           ed.remove(); cargarVideos();
         } catch (e) { aviso("No se pudo cambiar: " + e.message, "error"); }
       });
@@ -1559,7 +1570,7 @@ function abrirEditor(fila, v) {
         const res = await r.json().catch(() => ({}));
         if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error");
         fila.remove();
-        aviso("Archivo borrado 🗑");
+        aviso("Archivo borrado 🗑", null, true);
       });
 
       hist.appendChild(fila);
@@ -1617,10 +1628,10 @@ function abrirEditor(fila, v) {
       const url = await subirAB2(archivo, "subtitulos", p => panelSub.actualizar(p, nombre));
       inSub.value = url; pintarSub();
       panelSub.cerrar("Subtítulos listos 💬");
-      aviso("Subtítulos subidos — dale a Guardar para aplicarlos.");
+      aviso("Subtítulos subidos — dale a Guardar para aplicarlos.", null, true);
     } catch (e) {
       panelSub.cerrar("Falló la subida");
-      aviso("No se pudieron subir los subtítulos: " + e.message, "error");
+      aviso("No se pudieron subir los subtítulos: " + e.message, "error", true);
     }
     fileSub.value = "";
   }
@@ -1635,9 +1646,9 @@ function abrirEditor(fila, v) {
     META[v.fileName] = nuevo;
     try {
       await guardarConfig({ videosMeta: META });
-      aviso("Guardado ✅ Ya se ve así en Jeniflix.");
+      aviso("Guardado ✅ Ya se ve así en Jeniflix.", null, true);
       ed.remove(); pintarVids();
-    } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
+    } catch (e) { aviso("No se pudo guardar: " + e.message, "error", true); }
   });
 }
 
@@ -1689,7 +1700,7 @@ async function subirFondo(file) {
     $("fFondo").value = url;
     pintarPreviewFondo();
     panelSub.cerrar("Fondo listo 🖼️");
-    aviso("Fondo subido 🖼️ — no olvides darle a Guardar.");
+    aviso("Fondo subido 🖼️ — no olvides darle a Guardar.", null, true);
   } catch (e) {
     panelSub.cerrar("Falló la subida");
     aviso("No se pudo subir el fondo: " + e.message, "error");
@@ -1854,6 +1865,16 @@ async function mandarEstado(accion) {
     estadoParty(accion === "pause" ? "Pausado para todos ❚❚" : "Reanudado para todos ▶");
   } catch (e) { estadoParty("No se pudo: " + e.message, true); }
 }
+$("btnRecargarTodos").addEventListener("click", async () => {
+  if (!confirm("Se recargará la página de quien esté viendo el sitio.\n(No corta una película en reproducción.)\n\n¿Continuar?")) return;
+  const canal = salaAdmin();
+  if (!canal) return estadoParty("No hay conexión con la sala.", true);
+  try {
+    await canal.send({ type: "broadcast", event: "recargar", payload: { de: MI_ID_ADMIN } });
+    estadoParty("Listo: sus pantallas se están actualizando 🔄");
+  } catch (e) { estadoParty("No se pudo: " + e.message, true); }
+});
+
 $("btnPausarTodos").addEventListener("click", () => mandarEstado("pause"));
 $("btnReanudarTodos").addEventListener("click", () => mandarEstado("play"));
 

@@ -944,6 +944,77 @@ function sonidoTudum() {
   } catch (e) { /* sin sonido, no pasa nada */ }
 }
 
+/* ============================================================
+   🔄 MANTENERSE AL DÍA
+   La página revisa sola si cambiaron los títulos, portadas o
+   subtítulos y se actualiza sin que haya que recargar a mano.
+   Nunca interrumpe una película que se esté viendo.
+   ============================================================ */
+let huellaDatos = "";
+
+async function traerDatosFrescos() {
+  const cred = window.GALAXIA_SUPABASE || {};
+  const nuevo = { cfg: null, videos: null };
+  if (SB) {
+    const r = await SB.from("galaxia_config").select("data").eq("id", 1).maybeSingle();
+    if (r && r.data && r.data.data) nuevo.cfg = r.data.data;
+  }
+  const rv = await fetch("/api/archivos?carpeta=videos&t=" + Date.now(), { cache: "no-store" });
+  if (rv.ok) nuevo.videos = (await rv.json()).archivos || [];
+  const rf = await fetch("/api/archivos?carpeta=fotos&t=" + Date.now(), { cache: "no-store" });
+  if (rf.ok) nuevo.fotos = ((await rf.json()).archivos || []).map(f => f.url);
+  return nuevo;
+}
+
+function armarVideos(lista, meta) {
+  const salida = (lista || []).map(a => Object.assign({ origen: "b2" }, a));
+  (CONFIG.videosLink || []).forEach(l => salida.push({
+    origen: "link", fileName: l.id, url: l.url, embed: !!l.embed,
+    nombre: l.nombre || l.url, tam: 0
+  }));
+  salida.sort((a, b) => {
+    const ma = meta[a.fileName] || {}, mb = meta[b.fileName] || {};
+    if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;
+    const oa = ma.orden === undefined ? -1 : ma.orden;
+    const ob = mb.orden === undefined ? -1 : mb.orden;
+    return oa - ob;
+  });
+  salida.forEach(v => {
+    const m = meta[v.fileName] || {};
+    v.terminada = !!m.terminada;
+    v.titulo = m.titulo || "";
+    v.miniatura = m.miniatura || "";
+    v.subtitulo = m.subtitulo || "";
+  });
+  return salida;
+}
+
+async function revisarCambios(forzar) {
+  // si están viendo algo, no se toca nada hasta que cierren
+  if (playerVideo.classList.contains("abierto")) return;
+  let d;
+  try { d = await traerDatosFrescos(); } catch (e) { return; }
+  if (!d.videos) return;
+
+  const cfg = d.cfg || {};
+  const huella = JSON.stringify([cfg.videosMeta, cfg.videosLink, cfg.flixTitulo,
+    cfg.flixLogo, cfg.flixEtiqueta, d.videos.map(v => v.fileName)]);
+  if (!forzar && huella === huellaDatos) return;
+  huellaDatos = huella;
+
+  CONFIG = Object.assign({}, DEFAULTS, cfg);
+  VIDEOS = armarVideos(d.videos, CONFIG.videosMeta || {});
+  if (d.fotos) FOTOS = d.fotos;
+
+  document.getElementById("flixTitulo").textContent = CONFIG.flixTitulo || DEFAULTS.flixTitulo;
+  document.getElementById("logoFlix").textContent = CONFIG.flixLogo || DEFAULTS.flixLogo;
+  document.getElementById("etiquetaFlix").textContent = CONFIG.flixEtiqueta || DEFAULTS.flixEtiqueta;
+  if (netflixUI.classList.contains("abierta")) pintarVideos();
+}
+
+setInterval(() => { if (!document.hidden) revisarCambios(); }, 40000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) revisarCambios(); });
+
 /* --- textos editables de Jeniflix --- */
 document.getElementById("flixTitulo").textContent = CONFIG.flixTitulo || DEFAULTS.flixTitulo;
 document.getElementById("logoFlix").textContent = CONFIG.flixLogo || DEFAULTS.flixLogo;
@@ -970,8 +1041,10 @@ const playerVideo = document.getElementById("playerVideo");
 const vid = document.getElementById("vid");
 
 let mostrarVistas = false;   // por defecto solo se ven las pendientes
+let listaPintadaEn = 0;      // para ignorar un OK del control recién abierta la lista
 
 function pintarVideos() {
+  listaPintadaEn = Date.now();
   gridVideos.innerHTML = "";
   const vistas = VIDEOS.filter(v => v.terminada).length;
   const btnV = document.getElementById("btnVistas");
@@ -1026,7 +1099,12 @@ function pintarVideos() {
     card.setAttribute("role", "button");
     card.addEventListener("click", () => abrirVideo(v));
     card.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " " || e.keyCode === 13) { e.preventDefault(); abrirVideo(v); }
+      if (e.key !== "Enter" && e.key !== " " && e.keyCode !== 13) return;
+      e.preventDefault();
+      // en la tele, un OK del control que venía de antes puede llegar justo al
+      // abrirse la lista y meterla a una película sin querer
+      if (Date.now() - listaPintadaEn < 900) return;
+      abrirVideo(v);
     });
     gridVideos.appendChild(card);
   });
@@ -1251,6 +1329,15 @@ function unirseALaSala() {
     canalSala = SB.channel("jeniflix-party", { config: { broadcast: { self: false } } });
     canalSala.on("broadcast", { event: "estado" }, ({ payload }) => aplicarEstadoRemoto(payload));
     canalSala.on("broadcast", { event: "aviso" }, ({ payload }) => mostrarAvisoParty(payload || {}));
+    // el panel avisa cuando guarda algo: así se ve al momento, sin recargar
+    canalSala.on("broadcast", { event: "refrescar" }, () => revisarCambios(true));
+    // recarga completa a petición del panel (útil en la tele, donde recargar
+    // a mano con el control es un fastidio)
+    canalSala.on("broadcast", { event: "recargar" }, () => {
+      if (playerVideo.classList.contains("abierto")) return;   // no cortar una película
+      mostrarAvisoParty({ texto: "Actualizando…", pos: "abajo", tam: 18, dur: 2 });
+      setTimeout(() => location.reload(), 700);
+    });
     canalSala.subscribe();
   } catch (e) { canalSala = null; }
 }
@@ -1259,6 +1346,10 @@ function unirseALaSala() {
 vid.addEventListener("play",  () => { if (!aplicandoRemoto) emitirSala("estado", { accion: "play",  t: vid.currentTime }); });
 vid.addEventListener("pause", () => { if (!aplicandoRemoto) emitirSala("estado", { accion: "pause", t: vid.currentTime }); });
 vid.addEventListener("seeked",() => { if (!aplicandoRemoto) emitirSala("estado", { accion: "seek",  t: vid.currentTime }); });
+
+/* se entra a la sala desde el arranque, no solo al abrir una película:
+   así llegan los avisos y las actualizaciones aunque estén en el menú */
+unirseALaSala();
 
 btnCC.addEventListener("click", () => {
   try { localStorage.setItem(CLAVE_SUBS, subsEncendidos() ? "0" : "1"); } catch (e) {}
@@ -1545,14 +1636,15 @@ function entrarJeniflix(conAnimacion) {
   recordarPantalla("jeniflix");
   pintarVideos();
   document.getElementById("intro").classList.add("oculto");
-  if (!conAnimacion) { netflixUI.classList.add("abierta"); enfocarPrimera(); return; }
+  // OJO: no se deja ninguna película seleccionada al entrar. En la tele, el
+  // primer OK del control abriría la que estuviera marcada sin querer.
+  if (!conAnimacion) { netflixUI.classList.add("abierta"); return; }
   const ov = document.getElementById("nOverlay");
   sonidoTudum();
   ov.classList.add("activa");
   setTimeout(() => {
     netflixUI.classList.add("abierta");   // primero se muestra Jeniflix…
     ov.classList.remove("activa");        // …y hasta entonces se quita el fondo negro
-    enfocarPrimera();
   }, 2600);
 }
 document.getElementById("tileNetflix").addEventListener("click", () => entrarJeniflix(true));
@@ -1574,8 +1666,9 @@ netflixUI.addEventListener("keydown", e => {
 document.getElementById("btnVistas").addEventListener("click", () => {
   mostrarVistas = !mostrarVistas;
   pintarVideos();
-  const c = gridVideos.querySelector(".card-video");
-  if (c) c.focus();      // deja el foco en una película, para seguir con el control
+  // el foco se queda en el propio botón: si se dejara en una película,
+  // el siguiente OK del control la abriría sin querer
+  document.getElementById("btnVistas").focus();
 });
 
 /* --- salir de la galaxia y volver a la portada --- */
