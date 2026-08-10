@@ -26,6 +26,11 @@ h1 span{background:linear-gradient(90deg,var(--rosa),var(--lila));-webkit-backgr
 .tarjeta.plegada .flechaPlegar{transform:rotate(-90deg)}
 .tarjeta.plegada .cuerpoTarjeta{display:none}
 .tarjeta.plegada{padding-top:18px;padding-bottom:18px;opacity:.9}
+/* arrastrar para reordenar: el título es el asa */
+.tarjeta h2.plegable{cursor:grab}
+.tarjeta h2.plegable:active{cursor:grabbing}
+.tarjeta.arrastrando{opacity:.45;outline:2px dashed var(--rosa);outline-offset:2px}
+.flechaPlegar::before{content:"⠿";margin-right:10px;opacity:.5;font-size:13px}
 label{display:block;font-size:13px;color:#c9a6ff;margin:12px 0 5px}
 input[type=text],input[type=email],input[type=password],input[type=url],textarea{
   width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--borde);
@@ -675,13 +680,86 @@ function prepararPlegables() {
     h.appendChild(flecha);
 
     h.addEventListener("click", () => {
+      if (seArrastro) return;                    // venía de mover la sección, no de abrirla
       const seCierra = !t.classList.contains("plegada");
       t.classList.toggle("plegada", seCierra);
       seccionesCerradas[clave] = seCierra;
       guardarSecciones();
     });
 
+    // --- arrastrar para reordenar (el asa es el título) ---
+    h.addEventListener("mousedown", () => { t.draggable = true; });
+    h.addEventListener("touchstart", () => { t.draggable = true; }, { passive: true });
+    document.addEventListener("mouseup", () => { t.draggable = false; });
+
+    t.addEventListener("dragstart", e => {
+      arrastrada = t; seArrastro = true;
+      t.classList.add("arrastrando");
+      try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", clave); } catch (err) {}
+    });
+    t.addEventListener("dragend", () => {
+      t.classList.remove("arrastrando");
+      t.draggable = false;
+      arrastrada = null;
+      guardarOrdenSecciones();
+      setTimeout(() => { seArrastro = false; }, 60);
+    });
+    t.addEventListener("dragover", e => {
+      if (!arrastrada || arrastrada === t) return;
+      if (arrastrada.parentNode !== t.parentNode) return;   // solo dentro del mismo bloque
+      e.preventDefault();
+      const r = t.getBoundingClientRect();
+      const arriba = e.clientY < r.top + r.height / 2;
+      t.parentNode.insertBefore(arrastrada, arriba ? t : t.nextSibling);
+    });
+
     if (seccionesCerradas[clave]) t.classList.add("plegada");
+  });
+
+  aplicarOrdenSecciones(CONFIG_DATA.panelOrden);
+}
+
+/* ---- orden de las secciones ---- */
+let arrastrada = null;
+let seArrastro = false;
+const CONTENEDORES = ["vistaPanel", "secNetflix", "secGalaxia"];
+
+function ordenSeccionesActual() {
+  const mapa = {};
+  CONTENEDORES.forEach(id => {
+    const c = document.getElementById(id);
+    if (!c) return;
+    mapa[id] = [...c.children].filter(x => x.dataset && x.dataset.plegable)
+                              .map(x => x.dataset.plegable);
+  });
+  return mapa;
+}
+
+function guardarOrdenSecciones() {
+  clearTimeout(guardarSeccionesTimer);
+  guardarSeccionesTimer = setTimeout(() => {
+    guardarConfig({ panelOrden: ordenSeccionesActual() }, true).catch(() => {});
+  }, 700);
+}
+
+/* Reacomoda cada sección en el orden guardado, respetando los huecos que ya
+   ocupaban (así lo que no se puede mover, como la tarjeta de sesión, no baila) */
+function aplicarOrdenSecciones(mapa) {
+  if (!mapa) return;
+  CONTENEDORES.forEach(id => {
+    const c = document.getElementById(id);
+    const orden = mapa[id];
+    if (!c || !orden || orden.length < 2) return;
+
+    const tarjetas = [...c.children].filter(x => x.dataset && x.dataset.plegable);
+    if (tarjetas.length < 2) return;
+
+    const ordenadas = orden.map(k => tarjetas.find(x => x.dataset.plegable === k)).filter(Boolean);
+    tarjetas.forEach(x => { if (ordenadas.indexOf(x) < 0) ordenadas.push(x); });   // las nuevas al final
+
+    const huecos = tarjetas.map(x => { const m = document.createComment("h"); c.insertBefore(m, x); return m; });
+    tarjetas.forEach(x => c.removeChild(x));
+    huecos.forEach((m, i) => { c.insertBefore(ordenadas[i], m); c.removeChild(m); });
   });
 }
 
