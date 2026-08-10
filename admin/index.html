@@ -15,6 +15,17 @@ h1{font-size:26px;display:flex;align-items:center;gap:10px;margin:10px 0 20px}
 h1 span{background:linear-gradient(90deg,var(--rosa),var(--lila));-webkit-background-clip:text;background-clip:text;color:transparent}
 .tarjeta{background:var(--panel);border:1px solid var(--borde);border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .tarjeta h2{margin:0 0 14px;font-size:17px;color:#ffd1ec}
+/* secciones que se abren y se cierran */
+.tarjeta h2.plegable{
+  cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;
+  margin:0;padding:2px 0;transition:color .18s;
+}
+.tarjeta h2.plegable:hover{color:#fff}
+.flechaPlegar{margin-left:auto;font-size:14px;opacity:.65;transition:transform .25s}
+.tarjeta:not(.plegada) .cuerpoTarjeta{margin-top:14px}
+.tarjeta.plegada .flechaPlegar{transform:rotate(-90deg)}
+.tarjeta.plegada .cuerpoTarjeta{display:none}
+.tarjeta.plegada{padding-top:18px;padding-bottom:18px;opacity:.9}
 label{display:block;font-size:13px;color:#c9a6ff;margin:12px 0 5px}
 input[type=text],input[type=email],input[type=password],input[type=url],textarea{
   width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--borde);
@@ -557,6 +568,7 @@ async function entrar(user) {
   // y los videos por link. Si la lista se pinta antes, aparecen los nombres
   // crudos de los archivos y se pierden de vista los agregados por link.
   await cargarConfig();
+  prepararPlegables();          // ya con el estado guardado de cada sección
   await Promise.all([cargarFotos(), cargarVideos()]);
 }
 
@@ -593,6 +605,7 @@ async function cargarConfig() {
   const d = (data && data.data) || {};
   CONFIG_DATA = d;
   META = d.videosMeta || {};
+  seccionesCerradas = d.panelSecciones || {};
   $("fNombre").value = d.nombre || "JENIFFER";
   $("fTitulo").value = d.tituloIntro || "Para Ti, Jeniffer 💖";
   $("fSubtitulo").value = d.subtituloIntro || "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.";
@@ -613,13 +626,63 @@ async function cargarConfig() {
 }
 
 /* guarda mezclando con lo que ya había (no pisa videosMeta ni campos futuros) */
-async function guardarConfig(parcial) {
+async function guardarConfig(parcial, sinAvisar) {
   CONFIG_DATA = Object.assign({}, CONFIG_DATA, parcial);
   const { error } = await sb.from("galaxia_config").upsert({ id: 1, data: CONFIG_DATA });
   if (error) throw new Error(error.message);
   // avisar a quien esté en el sitio para que lo vea al momento, sin recargar
+  // (sinAvisar: para cosas del panel que a ella no le cambian nada)
+  if (sinAvisar) return;
   try { salaAdmin() && salaAdmin().send({ type: "broadcast", event: "refrescar", payload: {} }); }
   catch (e) {}
+}
+
+/* ============================================================
+   SECCIONES PLEGABLES
+   Se puede cerrar cada bloque para tener el panel más ordenado.
+   Cómo lo dejas se guarda en tu configuración (no en el navegador),
+   así lo encuentras igual desde cualquier equipo.
+   ============================================================ */
+let seccionesCerradas = {};
+let guardarSeccionesTimer = null;
+
+function guardarSecciones() {
+  clearTimeout(guardarSeccionesTimer);
+  guardarSeccionesTimer = setTimeout(() => {
+    guardarConfig({ panelSecciones: seccionesCerradas }, true).catch(() => {});
+  }, 700);
+}
+
+function prepararPlegables() {
+  document.querySelectorAll("#vistaPanel .tarjeta").forEach(t => {
+    const h = t.querySelector("h2");
+    if (!h || t.dataset.plegable) return;
+    const clave = aSlug(h.textContent);
+    if (!clave) return;
+    t.dataset.plegable = clave;
+
+    // todo lo que va debajo del título se mete en un contenedor que se oculta
+    const cuerpo = document.createElement("div");
+    cuerpo.className = "cuerpoTarjeta";
+    while (h.nextSibling) cuerpo.appendChild(h.nextSibling);
+    t.appendChild(cuerpo);
+
+    h.classList.add("plegable");
+    h.setAttribute("title", "Clic para abrir o cerrar esta sección");
+    const flecha = document.createElement("span");
+    flecha.className = "flechaPlegar";
+    flecha.textContent = "▾";
+    h.appendChild(flecha);
+
+    h.addEventListener("click", () => {
+      const seCierra = !t.classList.contains("plegada");
+      t.classList.toggle("plegada", seCierra);
+      seccionesCerradas[clave] = seCierra;
+      guardarSecciones();
+    });
+
+    if (seccionesCerradas[clave]) t.classList.add("plegada");
+  });
 }
 
 $("btnGuardar").addEventListener("click", async () => {
