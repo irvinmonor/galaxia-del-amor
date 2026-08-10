@@ -1021,6 +1021,15 @@ document.getElementById("logoFlix").textContent = CONFIG.flixLogo || DEFAULTS.fl
 document.getElementById("etiquetaFlix").textContent = CONFIG.flixEtiqueta || DEFAULTS.flixEtiqueta;
 
 /* --- recordar en qué pantalla se quedaron --- */
+/* ¿estamos en una smart TV? (Android TV, Fire TV, Tizen de Samsung,
+   webOS de LG, Roku, Chromecast…). En ese caso la portada estorba:
+   se entra directo a las películas. */
+function esSmartTV() {
+  const ua = navigator.userAgent || "";
+  return /smart-?tv|smarttv|tizen|web0s|webos|netcast|hbbtv|viera|bravia|aquos|googletv|android\s*tv|crkey|aft[a-z]{1,3}|firetv|fire\s*tv|philips\s*tv|inettv|opera\s*tv|vidaa|roku|dlnadoc|netrange/i.test(ua)
+      || (/android/i.test(ua) && !/mobile/i.test(ua) && !("ontouchstart" in window));
+}
+
 const CLAVE_PANTALLA = "jeniflix_pantalla";
 function recordarPantalla(p) { try { localStorage.setItem(CLAVE_PANTALLA, p); } catch (e) {} }
 function pantallaGuardada() { try { return localStorage.getItem(CLAVE_PANTALLA); } catch (e) { return null; } }
@@ -1740,6 +1749,14 @@ function irA(el) {
 netflixUI.addEventListener("keydown", e => {
   if (playerVideo.classList.contains("abierto")) return;   // el reproductor manda
   const k = e.key;
+
+  // botón "atrás" del control: en la tele se queda en las películas,
+  // que es donde ella quiere estar, en vez de salir a la portada
+  if (esSmartTV() && (k === "Escape" || k === "Backspace" || e.keyCode === 461 || e.keyCode === 27)) {
+    e.preventDefault();
+    return;
+  }
+
   if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(k)) return;
   e.preventDefault();
 
@@ -1835,8 +1852,10 @@ modalSorpresa.addEventListener("click", e => { if (e.target === modalSorpresa) m
    (y sin transiciones) para que no se alcance a ver el inicio. */
 fondoListo.then(() => {
   sinTransicion(() => {
-    // solo Jeniflix se retoma; la galaxia siempre arranca desde la portada
-    if (pantallaGuardada() === "jeniflix") entrarJeniflix(false);
+    // En la tele se entra siempre directo a las películas: la portada solo
+    // estorba con el control. En PC y celular se retoma donde estaban.
+    // La galaxia nunca se retoma: siempre arranca desde la portada.
+    if (esSmartTV() || pantallaGuardada() === "jeniflix") entrarJeniflix(false);
     document.body.classList.add("datos-listos");            // recién ahora se revela
   });
 });
