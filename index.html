@@ -209,7 +209,11 @@ video::-webkit-media-controls-overlay-play-button{
 }
 .card-video .visto span{display:block;height:100%;width:0%;background:#e50914}
 .card-video .sinPortada{
-  background:linear-gradient(140deg,#2a1148,#12002b);
+  background:#000;display:flex;align-items:center;justify-content:center;
+}
+.card-video .sinPortada span{
+  color:rgba(255,255,255,.42);font-size:19px;font-weight:800;letter-spacing:5px;
+  text-transform:uppercase;
 }
 .card-video.vista{opacity:.62}
 .card-video.vista:hover{opacity:1}
@@ -1071,11 +1075,11 @@ function pintarVideos() {
     const sep = separarAnio(v.titulo || v.nombre);
     const card = document.createElement("div");
     card.className = "card-video" + (v.terminada ? " vista" : "");
+    // sin portada propia se pone un recuadro negro con la palabra PELÍCULA:
+    // así nunca aparece el botón de play gigante que dibujan algunas teles
     const portada = v.miniatura
       ? `<img class="portada" src="${v.miniatura}" alt="" loading="lazy">`
-      : (v.embed
-          ? `<div class="portada sinPortada"></div>`
-          : `<video src="${v.url}#t=1" preload="metadata" muted playsinline></video>`);
+      : `<div class="portada sinPortada"><span>PELÍCULA</span></div>`;
     card.innerHTML = `
       ${portada}
       <div class="play-ico">
@@ -1090,6 +1094,15 @@ function pintarVideos() {
         ${sep.anio ? '<span class="anio">' + sep.anio + "</span>" : ""}
       </div>
       <div class="visto"><span></span></div>`;
+    // si la portada guardada ya no carga, se cae al recuadro negro
+    const img = card.querySelector("img.portada");
+    if (img) img.addEventListener("error", () => {
+      const hueco = document.createElement("div");
+      hueco.className = "portada sinPortada";
+      hueco.innerHTML = "<span>PELÍCULA</span>";
+      img.replaceWith(hueco);
+    });
+
     const pos = posicionDe(v.fileName || v.url);
     if (pos) {
       const barra = card.querySelector(".visto");
