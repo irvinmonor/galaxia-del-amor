@@ -1124,7 +1124,7 @@ async function subirVideos(files) {
   const { ok, errores } = res;
   if (errores.length) aviso("Subidos " + ok + " de " + lista.length + ". Fallaron: " + errores.join(" · "), "error");
   else aviso(ok + " video(s) subido(s) 🎬 ¡Ya se ven en el modo Netflix!");
-  cargarVideos();
+  cargarVideos(true);
 }
 
 let VIDS = [];   // lista actual, ya ordenada como se verá en Jeniflix
@@ -1199,7 +1199,7 @@ $("btnAgregarLink").addEventListener("click", async () => {
       avisoLink.className = "bueno";
     }
     aviso("Video agregado por link 🔗");
-    cargarVideos();
+    cargarVideos(true);
   } catch (e) { aviso("No se pudo guardar: " + e.message, "error"); }
 });
 
@@ -1224,7 +1224,11 @@ function ordenarVids() {
 
 /* reescribe los índices según la posición actual y guarda */
 async function guardarOrden(mensaje) {
-  const nueva = {};
+  // IMPORTANTE: se parte de lo que ya había. Si se reconstruye desde cero,
+  // cualquier película que no esté en la lista en ese momento (por ejemplo una
+  // recién subida que el listado aún no alcanzó a mostrar) pierde su título,
+  // su portada y sus subtítulos para siempre.
+  const nueva = Object.assign({}, META);
   VIDS.forEach((v, i) => {
     nueva[v.fileName] = Object.assign({}, META[v.fileName], { orden: i });
   });
@@ -1249,9 +1253,11 @@ async function copiar(texto, queEs) {
   }
 }
 
-async function cargarVideos() {
+/* fresco = saltarse la caché del listado; hace falta justo después de subir,
+   porque si no la película recién subida todavía no aparece */
+async function cargarVideos(fresco) {
   let j;
-  try { j = await pedirJSON("/api/archivos?carpeta=videos"); }
+  try { j = await pedirJSON("/api/archivos?carpeta=videos" + (fresco ? "&t=" + Date.now() : "")); }
   catch (e) { return aviso("No se pudieron cargar los videos: " + e.message, "error"); }
   if (j.error) return aviso("Backblaze: " + j.error, "error");
   const deB2 = (j.archivos || []).map(a => Object.assign({ origen: "b2" }, a));
@@ -1487,7 +1493,7 @@ function abrirEditor(fila, v) {
       await guardarConfig({ videosLink: listaLinks, videosMeta: META });
       panelSub.cerrar("Video reemplazado 🎬");
       aviso("Listo: el video quedó reemplazado y el anterior se borró.");
-      ed.remove(); cargarVideos();
+      ed.remove(); cargarVideos(true);
     } catch (e) {
       panelSub.cerrar("Falló el reemplazo");
       aviso("No se pudo reemplazar: " + e.message, "error");
@@ -1573,7 +1579,7 @@ function abrirEditor(fila, v) {
       });
       await guardarConfig({ videosLink: listaLinks, videosMeta: META });
       aviso("Listo: ahora se reproduce desde el link.");
-      ed.remove(); cargarVideos();
+      ed.remove(); cargarVideos(true);
     } catch (e) { aviso("No se pudo cambiar: " + e.message, "error"); }
   });
 
