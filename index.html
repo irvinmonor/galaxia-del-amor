@@ -735,24 +735,30 @@ Gracias por tu risa, por tu paciencia, por ser mi calma y mi locura al mismo tie
 
 Te amo hoy, te amo mañana, y te amaré en cada galaxia que exista. ✨`,
   frases: [
-    "💖 Mi amor","🌞 Mi sol","🌎 Mi mundo","✨ Brillas","❤️ Te amo","🌌 Mi universo",
-    "👑 Mi reina","🌠 Mi estrella","💫 Mi cielo","🔥 Siempre tú","🎶 Tu risa","🦋 Mariposas",
-    "💎 Eres todo","🙏 Gracias","💕 Cariño","🌹 Amor eterno","🤗 Tus abrazos","🌸 JENIFFER",
-    "🌈 Mi alegría","🌟 Contigo","🧸 Amor mío","🎁 Mi razón","🌙 Mi destino","💌 Recuerdos",
-    "🕊️ Mi paz","🪐 Mi órbita","🌊 Mi calma","💡 Mi luz","🍒 Dulzura","🥰 Mi vida",
-    "🎇 Felicidad","🌻 Mi girasol","🌺 Mi flor","💜 Eternidad","⭐ Mis sueños","✨ Magia",
-    "🎵 Nuestra canción","❤️‍🔥 Corazón","🌴 Mi paraíso","🌄 Mi amanecer","🌃 Noches contigo",
-    "💫 Mi inspiración","🌷 Juntos siempre","🎀 Mi ternura","🍀 Mi fortuna","🪞 Mi reflejo"
+    "Te amo","Contigo","JENIFFER","Tu risa","Nuestra historia","Siempre tú",
+    "Cada foto, un día","Gracias por existir","Lo mejor de mi vida","Aquí y en todas partes"
   ],
   frasesKitty: [
-    "¡Eres lo más bonito de este universo! 🌟",
-    "¿Sabías que alguien te ama muchísimo? 💖",
-    "Miau~ ¡me pidieron cuidarte por siempre! 🎀",
-    "Cada latido de este corazón dice tu nombre 💓",
-    "Eres más brillante que todas estas estrellas ✨",
-    "¡Un abrazo espacial para ti! 🤗🚀",
-    "El amor de ustedes dos es infinito ♾️💕",
-    "Miau miau = te amo en gatito 🐱💗"
+    "Cada foto de esta galaxia la elegí contando con mis bigotes 🐱",
+    "Son 979 recuerdos flotando… y todos son de ustedes dos",
+    "Gira despacito: hay fotos escondidas hasta el fondo",
+    "Si encuentras tu foto favorita, pide un deseo ✨",
+    "Esta galaxia no está en ningún mapa: es solo suya",
+    "Miau~ cada estrella que ves fue un buen día",
+    "Aquí no hay fotos malas, las revisé una por una 🐾",
+    "¿Ya viste la del fondo? Sigue girando…",
+    "Toda esta galaxia cabe en un solo abrazo",
+    "Los astrónomos no conocen esta constelación: se llama Ustedes",
+    "Ninguna estrella brilla tanto como tú en esas fotos",
+    "Aquí el tiempo no pasa: cada foto sigue ocurriendo",
+    "Este universo se armó foto por foto, sin prisa",
+    "Si te pierdes entre tantas fotos, yo te guío 🐱",
+    "Hay 979 razones girando a tu alrededor",
+    "Cada vuelta de la galaxia cuenta la historia de nuevo",
+    "Las galaxias reales tienen polvo; esta tiene puros buenos momentos",
+    "Alguien juntó todo esto pensando en ti, miau",
+    "No es magia: son ustedes dos en 979 pedacitos",
+    "Esta galaxia crece cada vez que se toman una foto nueva"
   ]
 };
 
@@ -1937,7 +1943,9 @@ posiciones.forEach((pos, i) => {
   el.innerHTML = kittySVG(...coloresKitty[i % coloresKitty.length]);
   Object.assign(el.style, pos); el.style.setProperty("--dur", pos.dur);
   el.addEventListener("click", () => {
-    const frase = CONFIG.frasesKitty[Math.floor(Math.random() * CONFIG.frasesKitty.length)];
+    const kitty = Array.isArray(CONFIG.frasesKitty) ? CONFIG.frasesKitty : [];
+    if (!kitty.length) { ráfagaCorazones(el.getBoundingClientRect().left + 40, el.getBoundingClientRect().top, 6); return; }
+    const frase = kitty[Math.floor(Math.random() * kitty.length)];
     burbuja.textContent = frase;
     const r = el.getBoundingClientRect();
     burbuja.style.left = Math.min(Math.max(r.left + r.width/2 - 115, 8), innerWidth - 238) + "px";
@@ -1966,8 +1974,9 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0018);
-scene.fog = new THREE.FogExp2(0x0a0018, 0.0011);
+/* espacio profundo: casi negro, como el cielo de verdad */
+scene.background = new THREE.Color(0x030008);
+scene.fog = new THREE.FogExp2(0x030008, 0.0009);
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 6000);
 let targetDist = 300, currentDist = 380, rotX = .25, rotY = 0;
 
@@ -1992,13 +2001,27 @@ function texturaBrillo() {
   return new THREE.CanvasTexture(c);
 }
 
+/* estrella de verdad: núcleo pequeño y definido con un halo mínimo,
+   no una bola difusa */
+function texturaEstrella() {
+  const c = document.createElement("canvas"); c.width = c.height = 32;
+  const x = c.getContext("2d");
+  const g = x.createRadialGradient(16, 16, 0, 16, 16, 15);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(.15, "rgba(255,255,255,.95)");
+  g.addColorStop(.35, "rgba(230,235,255,.35)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+
 /* --- galaxia espiral --- */
 let galaxia;
 (function galaxiaEspiral() {
   const N = 9000, brazos = 4;
   const geo = new THREE.BufferGeometry();
   const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-  const paleta = [new THREE.Color("#ff6bd6"), new THREE.Color("#b388ff"), new THREE.Color("#7cc7ff"), new THREE.Color("#ffd1ec")];
+  const paleta = [new THREE.Color("#cfd8ff"), new THREE.Color("#ffffff"), new THREE.Color("#ffe3f2"), new THREE.Color("#b8c6ff")];
   for (let i = 0; i < N; i++) {
     const brazo = i % brazos;
     const r = 60 + Math.pow(Math.random(), 1.6) * 620;
@@ -2014,23 +2037,41 @@ let galaxia;
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
   const mat = new THREE.PointsMaterial({
-    size: 2.6, map: texturaBrillo(), vertexColors: true, transparent: true,
+    size: 1.8, map: texturaEstrella(), vertexColors: true, transparent: true,
     depthWrite: false, blending: THREE.AdditiveBlending
   });
   galaxia = new THREE.Points(geo, mat);
   scene.add(galaxia);
 })();
 
-/* --- estrellas lejanas --- */
-(function estrellas(n = 2500, R = 3200) {
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const r = R * (.4 + .6 * Math.random()), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
-    pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.cos(p); pos[i*3+2] = r * Math.sin(p) * Math.sin(t);
-  }
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.4, color: 0xffffff, transparent: true, opacity: .8, depthWrite: false })));
+/* --- cielo estrellado en dos capas, como el de verdad ---
+   miles de estrellas débiles al fondo y unas cuantas brillantes que
+   titilan; con colores reales (blanco azulado, blanco, ámbar) --- */
+let estrellasBrillantes = null;
+(function cielo() {
+  const capa = (n, R, tam, colores, brillo) => {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const r = R * (.5 + .5 * Math.random()), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+      pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.cos(p); pos[i*3+2] = r * Math.sin(p) * Math.sin(t);
+      const c = colores[Math.floor(Math.random() * colores.length)].clone()
+        .multiplyScalar(brillo * (.6 + .4 * Math.random()));
+      col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    const p = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: tam, map: texturaEstrella(), vertexColors: true, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    scene.add(p);
+    return p;
+  };
+  const paleta = [new THREE.Color("#aabfff"), new THREE.Color("#ffffff"),
+                  new THREE.Color("#fff4e8"), new THREE.Color("#ffd9a8")];
+  capa(4200, 3200, 2.2, paleta, .5);                       // fondo tenue y denso
+  estrellasBrillantes = capa(500, 2800, 5, paleta, 1);     // pocas, brillantes, titilan
 })();
 
 /* --- corazón central de partículas --- */
@@ -2062,7 +2103,7 @@ function texturaHalo(t = "255,120,215", m = "160,80,255") {
   const c = document.createElement("canvas"); c.width = c.height = 512;
   const x = c.getContext("2d");
   const g = x.createRadialGradient(256, 256, 20, 256, 256, 250);
-  g.addColorStop(0, `rgba(${t},.85)`); g.addColorStop(.5, `rgba(${m},.35)`); g.addColorStop(1, "rgba(0,0,0,0)");
+  g.addColorStop(0, `rgba(${t},.5)`); g.addColorStop(.5, `rgba(${m},.16)`); g.addColorStop(1, "rgba(0,0,0,0)");
   x.fillStyle = g; x.fillRect(0, 0, 512, 512);
   return new THREE.CanvasTexture(c);
 }
@@ -2085,7 +2126,7 @@ const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaText
 textoCentro.scale.set(130, 32, 1); textoCentro.renderOrder = 999;
 scene.add(textoCentro);
 const nombreCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(CONFIG.nombre, 76, "#fff", "#b388ff"), transparent: true, depthWrite: false }));
-nombreCentro.scale.set(110, 27, 1); nombreCentro.position.y = -34; nombreCentro.renderOrder = 999;
+nombreCentro.scale.set(110, 27, 1); nombreCentro.position.y = -27; nombreCentro.renderOrder = 999;
 scene.add(nombreCentro);
 
 /* ============================================================
@@ -2127,55 +2168,59 @@ function texturaPolaroid(url) {
   });
 }
 
-/* Cuántas fotos se muestran a la vez. Hay cientos guardadas, pero
-   dibujarlas todas dejaría sin memoria a un celular o a la tele.
-   Se toma un puñado al azar en cada visita: así siempre se ven
-   distintas y con el tiempo aparecen todas. */
-const FOTOS_A_LA_VEZ = esSmartTV() ? 90 : 150;
-
-function alAzar(lista, cuantas) {
+function alAzar(lista) {
   const copia = lista.slice();
   for (let i = copia.length - 1; i > 0; i--) {          // barajar
     const j = Math.floor(Math.random() * (i + 1));
     const t = copia[i]; copia[i] = copia[j]; copia[j] = t;
   }
-  return copia.slice(0, cuantas);
+  return copia;
 }
 
+/* Se muestran TODAS las fotos, cargándolas por tandas: la galaxia se va
+   poblando sola mientras descargan, sin congelar la pantalla. El orden es
+   al azar en cada visita, así siempre se descubre distinto. */
 (async function crearAnilloFotos() {
   if (!FOTOS.length) return;
-  const elegidas = alAzar(FOTOS, FOTOS_A_LA_VEZ);
-  const texturas = (await Promise.all(elegidas.map(texturaPolaroid))).filter(Boolean);
-  if (!texturas.length) return;
-  const objetivo = Math.max(40, texturas.length);
-  const cartas = [];
-  while (cartas.length < objetivo) for (const t of texturas) { if (cartas.length >= objetivo) break; cartas.push(t); }
-  const total = cartas.length, vueltas = 2.5;
-  cartas.forEach((tex, i) => {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-    const frac = i / total;
-    const ang = frac * Math.PI * 2 * vueltas + Math.random() * .15;
-    const r = 135 + frac * 190;
-    const s = 20 + Math.random() * 12;
-    sp.scale.set(s, s, 1);
-    sp.userData = {
-      ang, r,
-      vel: .0014 + Math.random() * .0014,
-      y0: Math.sin(ang * 1.6) * 42 + (Math.random() - .5) * 20,
-      fase: Math.random() * Math.PI * 2
-    };
-    sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
-    grupoFotos.add(sp);
-  });
+  const urls = alAzar(FOTOS);
+  const total = urls.length;
+  const vueltas = Math.max(2.5, total / 110);           // más fotos = espiral más larga
+  const LOTE = 30;
+  let idx = 0;
+
+  for (let ini = 0; ini < total; ini += LOTE) {
+    const texturas = await Promise.all(urls.slice(ini, ini + LOTE).map(texturaPolaroid));
+    texturas.forEach(tex => {
+      if (!tex) return;
+      const i = idx++;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+      const frac = i / total;
+      const ang = frac * Math.PI * 2 * vueltas + Math.random() * .2;
+      const r = 140 + frac * 380;                        // se abre hasta bien afuera
+      const s = 15 + Math.random() * 10;
+      sp.scale.set(s, s, 1);
+      sp.userData = {
+        ang, r,
+        vel: .0009 + Math.random() * .0012,
+        y0: Math.sin(ang * 1.6) * 55 + (Math.random() - .5) * 30,
+        fase: Math.random() * Math.PI * 2
+      };
+      sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
+      grupoFotos.add(sp);
+    });
+  }
 })();
 
 /* --- frases orbitando (se reducen si hay fotos) --- */
 const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
 const grupoFrases = new THREE.Group();
 scene.add(grupoFrases);
+/* las palabras que orbitan se editan desde el panel; si la lista se deja
+   vacía, simplemente no hay palabras */
 const FRASES = [];
-const copias = FOTOS.length ? 2 : 4;
-for (let v = 0; v < copias; v++) FRASES.push(...CONFIG.frases);
+const listaFrases = Array.isArray(CONFIG.frases) ? CONFIG.frases : [];
+const copias = FOTOS.length ? 1 : 4;
+for (let v = 0; v < copias && listaFrases.length; v++) FRASES.push(...listaFrases);
 FRASES.forEach((f, i) => {
   const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length], 640, 128);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -2248,6 +2293,8 @@ let t = 0;
   t += .01;
 
   if (galaxia) galaxia.rotation.y += .0006;
+  // titileo sutil de las estrellas brillantes
+  if (estrellasBrillantes) estrellasBrillantes.material.opacity = .75 + .25 * Math.sin(t * 2.1);
 
   const lat = 1 + .09 * Math.pow(Math.abs(Math.sin(t * 2.4)), 3);
   corazonGrupo.scale.set(lat, lat, lat);
@@ -2255,7 +2302,7 @@ let t = 0;
 
   halo.scale.set(420 * (1 + .04 * Math.sin(t * .8)), 420 * (1 + .04 * Math.sin(t * .8)), 1);
   textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
-  nombreCentro.position.y = -34 + Math.sin(t * 1.3) * 2.5;
+  nombreCentro.position.y = -27 + Math.sin(t * 1.3) * 2.5;
 
   grupoFotos.children.forEach(sp => {
     const u = sp.userData;

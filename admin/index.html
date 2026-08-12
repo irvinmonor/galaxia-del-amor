@@ -501,9 +501,9 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       <textarea id="fCarta" style="min-height:160px"></textarea>
       <label>Firma de la carta</label>
       <input type="text" id="fFirma">
-      <label>Frases que orbitan (una por línea, con emoji)</label>
+      <label>Palabras que orbitan la galaxia (una por línea, con o sin emoji — vacío = ninguna)</label>
       <textarea id="fFrases" style="min-height:140px"></textarea>
-      <label>Frases de los gatitos (una por línea)</label>
+      <label>Frases al tocar los gatitos (una por línea, con o sin emoji)</label>
       <textarea id="fFrasesKitty" style="min-height:100px"></textarea>
     </div>
 
@@ -637,6 +637,34 @@ $("tabGalaxia").addEventListener("click", () => seccion("galaxia"));
 $("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); vista("vistaLogin"); });
 
 /* ---------- CONFIG ---------- */
+/* las mismas listas que trae la página de fábrica (para prellenar el panel) */
+const FRASES_DE_FABRICA = [
+  "Te amo","Contigo","JENIFFER","Tu risa","Nuestra historia","Siempre tú",
+  "Cada foto, un día","Gracias por existir","Lo mejor de mi vida","Aquí y en todas partes"
+];
+const KITTY_DE_FABRICA = [
+  "Cada foto de esta galaxia la elegí contando con mis bigotes 🐱",
+  "Son 979 recuerdos flotando… y todos son de ustedes dos",
+  "Gira despacito: hay fotos escondidas hasta el fondo",
+  "Si encuentras tu foto favorita, pide un deseo ✨",
+  "Esta galaxia no está en ningún mapa: es solo suya",
+  "Miau~ cada estrella que ves fue un buen día",
+  "Aquí no hay fotos malas, las revisé una por una 🐾",
+  "¿Ya viste la del fondo? Sigue girando…",
+  "Toda esta galaxia cabe en un solo abrazo",
+  "Los astrónomos no conocen esta constelación: se llama Ustedes",
+  "Ninguna estrella brilla tanto como tú en esas fotos",
+  "Aquí el tiempo no pasa: cada foto sigue ocurriendo",
+  "Este universo se armó foto por foto, sin prisa",
+  "Si te pierdes entre tantas fotos, yo te guío 🐱",
+  "Hay 979 razones girando a tu alrededor",
+  "Cada vuelta de la galaxia cuenta la historia de nuevo",
+  "Las galaxias reales tienen polvo; esta tiene puros buenos momentos",
+  "Alguien juntó todo esto pensando en ti, miau",
+  "No es magia: son ustedes dos en 979 pedacitos",
+  "Esta galaxia crece cada vez que se toman una foto nueva"
+];
+
 let CONFIG_DATA = {};        // copia de todo lo guardado, para no perder campos al guardar
 let META = {};               // { fileName: { orden: 0, terminada: false } }
 
@@ -652,8 +680,10 @@ async function cargarConfig() {
   $("fMensaje").value = d.mensajeCentral || "TE AMO ❤️";
   $("fCarta").value = d.carta || "";
   $("fFirma").value = d.firma || "— Con todo mi corazón, tuyo por siempre 💍";
-  $("fFrases").value = (d.frases || []).join("\n");
-  $("fFrasesKitty").value = (d.frasesKitty || []).join("\n");
+  // si nunca se han guardado, se muestran las que trae la página,
+  // para poder editarlas o borrarlas desde aquí
+  $("fFrases").value = (d.frases !== undefined ? d.frases : FRASES_DE_FABRICA).join("\n");
+  $("fFrasesKitty").value = (d.frasesKitty !== undefined ? d.frasesKitty : KITTY_DE_FABRICA).join("\n");
   $("fMusica").checked = !!d.musicaActiva;
   $("fMusicaUrl").value = d.musicaUrl || "";
   $("fSorpresa").checked = !!d.sorpresaActiva;
@@ -814,10 +844,9 @@ $("btnGuardar").addEventListener("click", async () => {
     sorpresaMensaje: $("fSorpresaMsg").value,
     fondoPortada: $("fFondo").value.trim()
   };
-  const frases = lineas($("fFrases").value);
-  const frasesKitty = lineas($("fFrasesKitty").value);
-  if (frases.length) data.frases = frases;
-  if (frasesKitty.length) data.frasesKitty = frasesKitty;
+  // se guardan siempre, aunque queden vacías: vacía = sin palabras/frases
+  data.frases = lineas($("fFrases").value);
+  data.frasesKitty = lineas($("fFrasesKitty").value);
   try { await guardarConfig(data); }
   catch (e) { btn.disabled = false; return aviso("Error al guardar: " + e.message, "error"); }
   btn.disabled = false;
