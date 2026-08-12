@@ -2127,9 +2127,25 @@ function texturaPolaroid(url) {
   });
 }
 
+/* Cuántas fotos se muestran a la vez. Hay cientos guardadas, pero
+   dibujarlas todas dejaría sin memoria a un celular o a la tele.
+   Se toma un puñado al azar en cada visita: así siempre se ven
+   distintas y con el tiempo aparecen todas. */
+const FOTOS_A_LA_VEZ = esSmartTV() ? 90 : 150;
+
+function alAzar(lista, cuantas) {
+  const copia = lista.slice();
+  for (let i = copia.length - 1; i > 0; i--) {          // barajar
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = copia[i]; copia[i] = copia[j]; copia[j] = t;
+  }
+  return copia.slice(0, cuantas);
+}
+
 (async function crearAnilloFotos() {
   if (!FOTOS.length) return;
-  const texturas = (await Promise.all(FOTOS.map(texturaPolaroid))).filter(Boolean);
+  const elegidas = alAzar(FOTOS, FOTOS_A_LA_VEZ);
+  const texturas = (await Promise.all(elegidas.map(texturaPolaroid))).filter(Boolean);
   if (!texturas.length) return;
   const objetivo = Math.max(40, texturas.length);
   const cartas = [];
