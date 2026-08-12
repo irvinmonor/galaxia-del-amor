@@ -692,7 +692,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 
 <!-- ======= REPRODUCTOR ======= -->
 <div id="player">
-  <span id="discoNota">🎵</span>
+  <span id="discoNota" style="display:none">🎵</span>
   <button id="play">▶</button>
   <div id="progress"><div id="progress-bar"></div></div>
   <div id="time">0:00 / 0:00</div>
@@ -2298,10 +2298,18 @@ function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
   c.height = pot2(Math.max(h || 0, alto));
   const x = c.getContext("2d");
   x.font = fuente;
-  x.textAlign = "center"; x.textBaseline = "middle";
+  // El centrado se calcula a mano en vez de confiar en textAlign:
+  // Safari en iPad lo ignoraba y el texto salía corrido a la derecha
+  // (se veía "TE" bajo el corazón y "AMO" de lado).
+  x.textAlign = "left";
+  x.textBaseline = "middle";
+  const anchoReal = x.measureText(txt).width;
+  const px = Math.round((c.width - anchoReal) / 2);
+  const py = Math.round(c.height / 2);
+
   x.fillStyle = color; x.shadowColor = glow; x.shadowBlur = 45;
-  x.fillText(txt, c.width/2, c.height/2);
-  x.shadowBlur = 18; x.fillText(txt, c.width/2, c.height/2);
+  x.fillText(txt, px, py);
+  x.shadowBlur = 18; x.fillText(txt, px, py);
 
   const tex = new THREE.CanvasTexture(c);
   // Sin esto, en iPad y otros equipos el motor reescala la textura a
