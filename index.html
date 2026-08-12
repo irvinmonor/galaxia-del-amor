@@ -1864,6 +1864,34 @@ document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
   recordarPantalla("inicio");
 });
 
+/* ============================================================
+   🎵 ARRANQUE DE LA MÚSICA
+   Los navegadores solo dejan sonar audio si viene de un toque del
+   usuario. Se arranca en silencio dentro del clic (que sí está
+   permitido) y se le quita el silencio después. Si algo falla,
+   se reintenta con el siguiente toque en cualquier parte.
+   ============================================================ */
+function musicaSonando() { return !audio.paused && !audio.muted; }
+
+function arrancarMusica(retraso) {
+  if (!CONFIG.musicaActiva || !audio.src || musicaSonando()) return;
+  try {
+    audio.muted = true;
+    const p = audio.play();
+    const alSonar = () => setTimeout(() => {
+      audio.muted = false;
+      if (audio.paused) audio.play().catch(() => {});
+      estadoPlay(true);
+    }, retraso || 0);
+    if (p && p.then) p.then(alSonar).catch(() => {}); else alSonar();
+  } catch (e) {}
+}
+
+/* red de seguridad: si por lo que sea no arrancó, el siguiente toque
+   o tecla en cualquier parte de la página la pone en marcha */
+["pointerdown", "keydown", "touchend"].forEach(ev =>
+  addEventListener(ev, () => { if (!musicaSonando()) arrancarMusica(0); }, { passive: true }));
+
 /* --- cuadro sorpresa 🔒: la galaxia, con cuenta regresiva ---
    Se abre sola el 12 de agosto de 2026 a las 5:00 PM de Mazatlán
    (UTC-7). El switch del panel sigue sirviendo como llave manual. */
@@ -1904,18 +1932,7 @@ setInterval(pintarEstadoSorpresa, 1000);
 
 tileSorpresa.addEventListener("click", () => {
   if (desbloqueadaParaMi()) {
-    if (CONFIG.musicaActiva) {
-      // se "desbloquea" el audio aquí, dentro del clic (los navegadores solo
-      // dejan sonar si viene de un toque), pero empieza un segundo después
-      try {
-        audio.muted = true;
-        audio.play().then(() => {
-          setTimeout(() => { audio.muted = false; audio.currentTime = 0; estadoPlay(true); }, 1000);
-        }).catch(() => {
-          setTimeout(() => { audio.muted = false; audio.play().then(() => estadoPlay(true)).catch(() => {}); }, 1000);
-        });
-      } catch (e) {}
-    }
+    arrancarMusica(1000);      // empieza a sonar un segundo después
     entrarGalaxia();
     return;
   }

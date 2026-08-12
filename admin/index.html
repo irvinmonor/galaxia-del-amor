@@ -845,8 +845,8 @@ $("btnGuardar").addEventListener("click", async () => {
     mensajeCentral: $("fMensaje").value.trim(),
     carta: $("fCarta").value,
     firma: $("fFirma").value.trim(),
-    musicaActiva: $("fMusica").checked,
-    musicaUrl: $("fMusicaUrl").value.trim(),
+    // ojo: la música se guarda más abajo, solo si hay canción puesta,
+    // para que un panel abierto de antes no la borre sin querer
     sorpresaActiva: $("fSorpresa").checked,
     sorpresaMensaje: $("fSorpresaMsg").value,
     fondoPortada: $("fFondo").value.trim()
@@ -854,6 +854,14 @@ $("btnGuardar").addEventListener("click", async () => {
   // se guardan siempre, aunque queden vacías: vacía = sin palabras/frases
   data.frases = lineas($("fFrases").value);
   data.frasesKitty = lineas($("fFrasesKitty").value);
+
+  // la música solo se toca si hay una canción escrita; así, si este panel
+  // llevaba rato abierto y el campo estaba vacío, no la borra
+  const urlMusica = $("fMusicaUrl").value.trim();
+  if (urlMusica) {
+    data.musicaUrl = urlMusica;
+    data.musicaActiva = $("fMusica").checked;
+  }
   try { await guardarConfig(data); }
   catch (e) { btn.disabled = false; return aviso("Error al guardar: " + e.message, "error"); }
   btn.disabled = false;
