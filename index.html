@@ -678,10 +678,8 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 <div id="topbar">
   <div class="chip" id="btnInicioGalaxia">← Inicio</div>
   <div class="chip" id="btnCarta">💌 Léeme</div>
-  <div class="chip" id="btnLluvia">💖 Lluvia de amor</div>
 </div>
 
-<div id="hint">🖐️ Gira la galaxia con tu dedo · toca a los gatitos</div>
 
 <!-- ======= REPRODUCTOR ======= -->
 <div id="player">
@@ -725,7 +723,7 @@ const DEFAULTS = {
   tituloIntro: "Para Ti, Jeniffer 💖",
   subtituloIntro: "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.",
   mensajeCentral: "TE AMO ❤️",
-  firma: "— Con todo mi corazón, tuyo por siempre 💍",
+  firma: "— Con todo mi corazón, Irving Monroy.",
   carta: `Mi amor:
 
 Si estás leyendo esto, es porque quise regalarte algo que no se rompe, no se marchita y no se acaba: un pedacito de universo.
@@ -736,30 +734,30 @@ Gracias por tu risa, por tu paciencia, por ser mi calma y mi locura al mismo tie
 
 Te amo hoy, te amo mañana, y te amaré en cada galaxia que exista. ✨`,
   frases: [
-    "Te amo","Contigo","JENIFFER","Tu risa","Nuestra historia","Siempre tú",
-    "Cada foto, un día","Gracias por existir","Lo mejor de mi vida","Aquí y en todas partes"
+    "Te amo","JENIFFER","Nosotros","Tu risa","Nuestra galaxia",
+    "979 fotos","Desde 2024","Equipo de dos","Más por venir","Sin final"
   ],
   frasesKitty: [
-    "Cada foto de esta galaxia la elegí contando con mis bigotes 🐱",
-    "Son 979 recuerdos flotando… y todos son de ustedes dos",
+    "Cada foto de nuestra galaxia la conté con mis bigotes 🐱",
+    "Son 979 recuerdos flotando… y todos son nuestros",
     "Gira despacito: hay fotos escondidas hasta el fondo",
     "Si encuentras tu foto favorita, pide un deseo ✨",
-    "Esta galaxia no está en ningún mapa: es solo suya",
+    "Esta galaxia no está en ningún mapa: es solo nuestra",
     "Miau~ cada estrella que ves fue un buen día",
     "Aquí no hay fotos malas, las revisé una por una 🐾",
     "¿Ya viste la del fondo? Sigue girando…",
     "Toda esta galaxia cabe en un solo abrazo",
-    "Los astrónomos no conocen esta constelación: se llama Ustedes",
-    "Ninguna estrella brilla tanto como tú en esas fotos",
+    "Esta constelación no viene en los libros: se llama Nosotros",
+    "Ninguna estrella brilla como tú en estas fotos",
     "Aquí el tiempo no pasa: cada foto sigue ocurriendo",
-    "Este universo se armó foto por foto, sin prisa",
+    "Armé este universo foto por foto, sin prisa",
     "Si te pierdes entre tantas fotos, yo te guío 🐱",
     "Hay 979 razones girando a tu alrededor",
-    "Cada vuelta de la galaxia cuenta la historia de nuevo",
-    "Las galaxias reales tienen polvo; esta tiene puros buenos momentos",
-    "Alguien juntó todo esto pensando en ti, miau",
-    "No es magia: son ustedes dos en 979 pedacitos",
-    "Esta galaxia crece cada vez que se toman una foto nueva"
+    "Cada vuelta cuenta nuestra historia de nuevo",
+    "Las galaxias tienen polvo; la nuestra, puros buenos ratos",
+    "Junté todo esto pensando en ti, miau",
+    "No es magia: somos nosotros en 979 pedacitos",
+    "Nuestra galaxia crece con cada foto que nos tomamos"
   ]
 };
 
@@ -882,8 +880,8 @@ function ráfagaCorazones(x, y, n = 8) {
    ============================================================ */
 function iniciar() {
 
-/* --- bloqueo de selección y clic derecho (el admin queda exento) --- */
-if (!ES_ADMIN) {
+/* --- bloqueo de selección y clic derecho, para todos --- */
+{
   document.body.classList.add("protegido");
   addEventListener("contextmenu", e => e.preventDefault());
   addEventListener("dragstart", e => e.preventDefault());
@@ -928,7 +926,6 @@ async function entrarGalaxia() {
   if (CONFIG.musicaActiva) {
     try { await audio.play(); estadoPlay(true); } catch(e) { /* play manual */ }
   }
-  setTimeout(() => document.getElementById("hint").classList.add("fuera"), 7000);
 }
 
 /* --- sonido "tudum" sintetizado (sin archivos externos) --- */
@@ -1843,7 +1840,6 @@ document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
   modal.classList.remove("abierta");                        // cerrar la carta si estaba abierta
   clearInterval(escribiendo);
   burbuja.classList.remove("visible");                      // quitar la burbuja del gatito
-  document.getElementById("hint").classList.remove("fuera");
   sinTransicion(() => {
     document.body.classList.remove("iniciado");
     document.getElementById("intro").classList.remove("oculto");
@@ -1851,18 +1847,51 @@ document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
   recordarPantalla("inicio");
 });
 
-/* --- cuadro sorpresa 🔒: la galaxia, bloqueada hasta el 12 --- */
+/* --- cuadro sorpresa 🔒: la galaxia, con cuenta regresiva ---
+   Se abre sola el 12 de agosto de 2026 a las 5:00 PM de Mazatlán
+   (UTC-7). El switch del panel sigue sirviendo como llave manual. */
+const MOMENTO_SORPRESA = Date.UTC(2026, 7, 13, 0, 0, 0);   // 12 ago 17:00 Mazatlán
+
+function sorpresaAbierta() {
+  return CONFIG.sorpresaActiva || Date.now() >= MOMENTO_SORPRESA;
+}
+function desbloqueadaParaMi() { return sorpresaAbierta() || ES_ADMIN; }
+const desbloqueada = desbloqueadaParaMi();   // para el resto del código (restaurar pantalla)
+
 const tileSorpresa = document.getElementById("tileSorpresa");
-const desbloqueada = CONFIG.sorpresaActiva || ES_ADMIN;
-if (desbloqueada) tileSorpresa.querySelector(".candado").textContent = "💖";
 const modalSorpresa = document.getElementById("modalSorpresa");
+const subEl = document.getElementById("subtituloIntro");
+
+function textoCuenta() {
+  let s = Math.max(0, Math.floor((MOMENTO_SORPRESA - Date.now()) / 1000));
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), g = s % 60;
+  const hh = String(h).padStart(2, "0"), mm = String(m).padStart(2, "0"), gg = String(g).padStart(2, "0");
+  return (d ? d + (d === 1 ? " día " : " días ") : "") + hh + ":" + mm + ":" + gg;
+}
+
+function pintarEstadoSorpresa() {
+  const abierta = sorpresaAbierta();
+  tileSorpresa.querySelector(".candado").textContent = desbloqueadaParaMi() ? "💖" : "🔒";
+  if (abierta) {
+    subEl.innerText = "¡La sorpresa ya está abierta! 💖";
+  } else {
+    subEl.innerText = "La sorpresa se abre en " + textoCuenta() + " ⏳";
+    if (modalSorpresa.classList.contains("abierta")) {
+      document.getElementById("textoSorpresa").innerText = "Se abre el 12 a las 5:00 PM\n\nFalta " + textoCuenta();
+    }
+  }
+}
+pintarEstadoSorpresa();
+setInterval(pintarEstadoSorpresa, 1000);
+
 tileSorpresa.addEventListener("click", () => {
-  if (desbloqueada) {
+  if (desbloqueadaParaMi()) {
     if (CONFIG.musicaActiva) { try { audio.play(); estadoPlay(true); } catch(e){} }
     entrarGalaxia();
     return;
   }
-  document.getElementById("textoSorpresa").innerText = CONFIG.sorpresaMensaje || DEFAULTS.sorpresaMensaje;
+  document.getElementById("textoSorpresa").innerText = "Se abre el 12 a las 5:00 PM\n\nFalta " + textoCuenta();
   modalSorpresa.classList.add("abierta");
 });
 document.getElementById("cerrarSorpresa").addEventListener("click", () => modalSorpresa.classList.remove("abierta"));
@@ -1910,8 +1939,23 @@ const modal = document.getElementById("modalCarta"),
       firmaCarta = document.getElementById("firmaCarta");
 let escribiendo = null;
 
+/* lluvia de corazones mientras la carta está abierta */
+let lluviaCarta = null;
+function empezarLluvia() {
+  if (lluviaCarta) return;
+  lluviaCarta = setInterval(() => ráfagaCorazones(Math.random() * innerWidth, innerHeight - 40, 3), 260);
+}
+function pararLluvia() { clearInterval(lluviaCarta); lluviaCarta = null; }
+
+function cerrarCartaModal() {
+  modal.classList.remove("abierta");
+  clearInterval(escribiendo);
+  pararLluvia();
+}
+
 document.getElementById("btnCarta").addEventListener("click", () => {
   modal.classList.add("abierta");
+  empezarLluvia();
   textoCarta.textContent = ""; firmaCarta.textContent = "";
   clearInterval(escribiendo);
   let i = 0;
@@ -1923,8 +1967,8 @@ document.getElementById("btnCarta").addEventListener("click", () => {
     }
   }, 34);
 });
-document.getElementById("cerrarCarta").addEventListener("click", () => { modal.classList.remove("abierta"); clearInterval(escribiendo); });
-modal.addEventListener("click", e => { if (e.target === modal) { modal.classList.remove("abierta"); clearInterval(escribiendo); } });
+document.getElementById("cerrarCarta").addEventListener("click", cerrarCartaModal);
+modal.addEventListener("click", e => { if (e.target === modal) cerrarCartaModal(); });
 
 /* --- stickers flotantes --- */
 const posiciones = [
@@ -1959,13 +2003,6 @@ posiciones.forEach((pos, i) => {
   document.body.appendChild(el);
 });
 
-document.getElementById("btnLluvia").addEventListener("click", () => {
-  let veces = 0;
-  const iv = setInterval(() => {
-    ráfagaCorazones(Math.random() * innerWidth, innerHeight - 40, 4);
-    if (++veces > 14) clearInterval(iv);
-  }, 180);
-});
 
 /* ============================================================
    🌌 ESCENA 3D
@@ -2087,12 +2124,13 @@ const corazonGrupo = new THREE.Group();
   const pos = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     const t = Math.random() * Math.PI * 2;
-    const esc = 2.6 * (0.75 + Math.random() * 0.3);
+    // corazón grande: rodea a la cámara en vez de quedar detrás de ella
+    const esc = 4.4 * (0.75 + Math.random() * 0.3);
     const x = 16 * Math.pow(Math.sin(t), 3);
     const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-    pos[i*3] = x * esc + (Math.random() - .5) * 5;
-    pos[i*3+1] = y * esc + (Math.random() - .5) * 5;
-    pos[i*3+2] = (Math.random() - .5) * 14;
+    pos[i*3] = x * esc + (Math.random() - .5) * 7;
+    pos[i*3+1] = y * esc + (Math.random() - .5) * 7;
+    pos[i*3+2] = (Math.random() - .5) * 30;
   }
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const mat = new THREE.PointsMaterial({
@@ -2147,7 +2185,8 @@ function texturaHalo(t = "255,120,215", m = "160,80,255") {
   return new THREE.CanvasTexture(c);
 }
 const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaHalo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-halo.scale.set(420, 420, 1);
+halo.scale.set(300, 300, 1);
+halo.position.z = -70;      // detrás de la cámara: su brillo ya no la tapa
 scene.add(halo);
 
 /* nebulosas lejanas de color, para que el espacio no se sienta vacío */
@@ -2176,12 +2215,10 @@ function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w = 102
   x.shadowBlur = 18; x.fillText(txt, w/2, h/2);
   return new THREE.CanvasTexture(c);
 }
+/* el TE AMO va abajo de la cámara, para no asomarse detrás de ella */
 const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(CONFIG.mensajeCentral, 90), transparent: true, depthWrite: false }));
-textoCentro.scale.set(130, 32, 1); textoCentro.renderOrder = 999;
+textoCentro.scale.set(130, 32, 1); textoCentro.position.y = -58; textoCentro.renderOrder = 999;
 scene.add(textoCentro);
-const nombreCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(CONFIG.nombre, 76, "#fff", "#b388ff"), transparent: true, depthWrite: false }));
-nombreCentro.scale.set(110, 27, 1); nombreCentro.position.y = -27; nombreCentro.renderOrder = 999;
-scene.add(nombreCentro);
 
 /* ============================================================
    📸 ANILLO DE FOTOS (subidas desde /admin)
@@ -2374,9 +2411,8 @@ let t = 0;
     camaraModelo.position.y = Math.sin(t * 1.1) * 4;
   }
 
-  halo.scale.set(420 * (1 + .04 * Math.sin(t * .8)), 420 * (1 + .04 * Math.sin(t * .8)), 1);
+  halo.scale.set(300 * (1 + .04 * Math.sin(t * .8)), 300 * (1 + .04 * Math.sin(t * .8)), 1);
   textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
-  nombreCentro.position.y = -27 + Math.sin(t * 1.3) * 2.5;
 
   grupoFotos.children.forEach(sp => {
     const u = sp.userData;

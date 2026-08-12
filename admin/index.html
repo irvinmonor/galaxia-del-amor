@@ -639,30 +639,30 @@ $("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); v
 /* ---------- CONFIG ---------- */
 /* las mismas listas que trae la página de fábrica (para prellenar el panel) */
 const FRASES_DE_FABRICA = [
-  "Te amo","Contigo","JENIFFER","Tu risa","Nuestra historia","Siempre tú",
-  "Cada foto, un día","Gracias por existir","Lo mejor de mi vida","Aquí y en todas partes"
+  "Te amo","JENIFFER","Nosotros","Tu risa","Nuestra galaxia",
+  "979 fotos","Desde 2024","Equipo de dos","Más por venir","Sin final"
 ];
 const KITTY_DE_FABRICA = [
-  "Cada foto de esta galaxia la elegí contando con mis bigotes 🐱",
-  "Son 979 recuerdos flotando… y todos son de ustedes dos",
+  "Cada foto de nuestra galaxia la conté con mis bigotes 🐱",
+  "Son 979 recuerdos flotando… y todos son nuestros",
   "Gira despacito: hay fotos escondidas hasta el fondo",
   "Si encuentras tu foto favorita, pide un deseo ✨",
-  "Esta galaxia no está en ningún mapa: es solo suya",
+  "Esta galaxia no está en ningún mapa: es solo nuestra",
   "Miau~ cada estrella que ves fue un buen día",
   "Aquí no hay fotos malas, las revisé una por una 🐾",
   "¿Ya viste la del fondo? Sigue girando…",
   "Toda esta galaxia cabe en un solo abrazo",
-  "Los astrónomos no conocen esta constelación: se llama Ustedes",
-  "Ninguna estrella brilla tanto como tú en esas fotos",
+  "Esta constelación no viene en los libros: se llama Nosotros",
+  "Ninguna estrella brilla como tú en estas fotos",
   "Aquí el tiempo no pasa: cada foto sigue ocurriendo",
-  "Este universo se armó foto por foto, sin prisa",
+  "Armé este universo foto por foto, sin prisa",
   "Si te pierdes entre tantas fotos, yo te guío 🐱",
   "Hay 979 razones girando a tu alrededor",
-  "Cada vuelta de la galaxia cuenta la historia de nuevo",
-  "Las galaxias reales tienen polvo; esta tiene puros buenos momentos",
-  "Alguien juntó todo esto pensando en ti, miau",
-  "No es magia: son ustedes dos en 979 pedacitos",
-  "Esta galaxia crece cada vez que se toman una foto nueva"
+  "Cada vuelta cuenta nuestra historia de nuevo",
+  "Las galaxias tienen polvo; la nuestra, puros buenos ratos",
+  "Junté todo esto pensando en ti, miau",
+  "No es magia: somos nosotros en 979 pedacitos",
+  "Nuestra galaxia crece con cada foto que nos tomamos"
 ];
 
 let CONFIG_DATA = {};        // copia de todo lo guardado, para no perder campos al guardar
@@ -679,7 +679,7 @@ async function cargarConfig() {
   $("fSubtitulo").value = d.subtituloIntro || "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.";
   $("fMensaje").value = d.mensajeCentral || "TE AMO ❤️";
   $("fCarta").value = d.carta || "";
-  $("fFirma").value = d.firma || "— Con todo mi corazón, tuyo por siempre 💍";
+  $("fFirma").value = d.firma || "— Con todo mi corazón, Irving Monroy.";
   // si nunca se han guardado, se muestran las que trae la página,
   // para poder editarlas o borrarlas desde aquí
   $("fFrases").value = (d.frases !== undefined ? d.frases : FRASES_DE_FABRICA).join("\n");
