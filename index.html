@@ -93,7 +93,8 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 #btnEntrar:hover{transform:scale(1.08)}
 @keyframes latido{0%,100%{transform:scale(1)}25%{transform:scale(1.06)}40%{transform:scale(1)}60%{transform:scale(1.06)}}
 @keyframes brillo-texto{0%{background-position:0 0}100%{background-position:300% 0}}
-@keyframes flotar{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}
+/* los gatitos flotan derechos: la inclinación los hacía verse chuecos */
+@keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 #intro small{color:#9f86c9;font-size:12px}
 .pregunta-intro{color:#c9a6ff!important;font-size:15px!important;letter-spacing:.5px}
 
@@ -2061,11 +2062,13 @@ function siguienteFraseKitty(lista) {
 }
 
 /* --- stickers flotantes --- */
+/* el mínimo en píxeles evita que se peguen al borde y se corten
+   en pantallas anchas, en el iPad o con zoom del navegador */
 const posiciones = [
-  {left:"4%",  top:"16%", dur:"3.6s"},
-  {right:"5%", top:"20%", dur:"4.4s"},
-  {left:"6%",  bottom:"22%", dur:"5s"},
-  {right:"7%", bottom:"26%", dur:"4s"}
+  {left:"max(24px, 4%)",  top:"max(90px, 16%)", dur:"3.6s"},
+  {right:"max(24px, 5%)", top:"max(90px, 20%)", dur:"4.4s"},
+  {left:"max(24px, 6%)",  bottom:"max(90px, 22%)", dur:"5s"},
+  {right:"max(24px, 7%)", bottom:"max(90px, 26%)", dur:"4s"}
 ];
 const coloresKitty = [["#ff5aa7","#ff2e9a"],["#b388ff","#7c4dff"],["#ffd1ec","#ff6bd6"],["#8df0ff","#38b6ff"]];
 const burbuja = document.createElement("div");
@@ -2083,9 +2086,13 @@ posiciones.forEach((pos, i) => {
     const frase = siguienteFraseKitty(kitty);
     burbuja.textContent = frase;
     const r = el.getBoundingClientRect();
-    burbuja.style.left = Math.min(Math.max(r.left + r.width/2 - 115, 8), innerWidth - 238) + "px";
-    burbuja.style.top = Math.max(r.top - 92, 8) + "px";
+    // se coloca centrada sobre el gatito, pero sin salirse de la pantalla
+    burbuja.style.left = "0px"; burbuja.style.top = "0px";
     burbuja.classList.add("visible");
+    const anchoB = burbuja.offsetWidth || 230, altoB = burbuja.offsetHeight || 60;
+    const x = r.left + r.width / 2 - anchoB / 2;
+    burbuja.style.left = Math.round(Math.min(Math.max(x, 12), innerWidth - anchoB - 12)) + "px";
+    burbuja.style.top = Math.round(Math.max(r.top - altoB - 14, 12)) + "px";
     clearTimeout(burbujaTimer);
     burbujaTimer = setTimeout(() => burbuja.classList.remove("visible"), 2600);
     ráfagaCorazones(r.left + r.width/2, r.top, 6);
