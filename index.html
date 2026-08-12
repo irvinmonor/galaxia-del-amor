@@ -2205,19 +2205,36 @@ scene.add(halo);
 });
 
 /* --- texto central --- */
-function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w = 1024, h = 256) {
-  const c = document.createElement("canvas"); c.width = w; c.height = h;
+/* Dibuja el texto en un lienzo que se ajusta a lo que mide la frase,
+   así no se corta por larga que sea. Devuelve también la proporción,
+   para poder estirar el sprite igual y que no salga deformado. */
+function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
+  const fuente = `bold ${fs}px 'Segoe UI', Arial`;
+  const medidor = document.createElement("canvas").getContext("2d");
+  medidor.font = fuente;
+  const ancho = Math.ceil(medidor.measureText(txt).width) + fs * 1.4;   // margen para el brillo
+  const alto = Math.ceil(fs * 2);
+
+  const c = document.createElement("canvas");
+  c.width = Math.max(w || 0, ancho);
+  c.height = Math.max(h || 0, alto);
   const x = c.getContext("2d");
-  x.font = `bold ${fs}px 'Segoe UI', Arial`;
+  x.font = fuente;
   x.textAlign = "center"; x.textBaseline = "middle";
   x.fillStyle = color; x.shadowColor = glow; x.shadowBlur = 45;
-  x.fillText(txt, w/2, h/2);
-  x.shadowBlur = 18; x.fillText(txt, w/2, h/2);
-  return new THREE.CanvasTexture(c);
+  x.fillText(txt, c.width/2, c.height/2);
+  x.shadowBlur = 18; x.fillText(txt, c.width/2, c.height/2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.proporcion = c.width / c.height;      // ancho ÷ alto
+  return tex;
 }
 /* el TE AMO va abajo de la cámara, para no asomarse detrás de ella */
-const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaTexto(CONFIG.mensajeCentral, 90), transparent: true, depthWrite: false }));
-textoCentro.scale.set(130, 32, 1); textoCentro.position.y = -58; textoCentro.renderOrder = 999;
+const texCentro = texturaTexto(CONFIG.mensajeCentral, 90);
+const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texCentro, transparent: true, depthWrite: false }));
+const altoCentro = 32;
+textoCentro.scale.set(altoCentro * (texCentro.proporcion || 4), altoCentro, 1);
+textoCentro.position.y = -58; textoCentro.renderOrder = 999;
 scene.add(textoCentro);
 
 /* ============================================================
@@ -2327,9 +2344,10 @@ const listaFrases = Array.isArray(CONFIG.frases) ? CONFIG.frases : [];
 const copias = FOTOS.length ? 1 : 4;
 for (let v = 0; v < copias && listaFrases.length; v++) FRASES.push(...listaFrases);
 FRASES.forEach((f, i) => {
-  const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length], 640, 128);
+  const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length]);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(52, 11, 1);
+  const alto = 11;                                   // el sprite se estira según lo larga que sea
+  sp.scale.set(alto * (tex.proporcion || 4.7), alto, 1);
   const phi = Math.acos(2 * Math.random() - 1), theta = Math.random() * Math.PI * 2, r = 165 + Math.random() * 150;
   sp.position.setFromSphericalCoords(r, phi, theta);
   sp.userData = { phi, theta, r, vel: .0008 + Math.random() * .0012, fase: Math.random() * Math.PI * 2 };
