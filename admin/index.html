@@ -468,7 +468,11 @@ progress{width:100%;height:8px;margin-top:10px;accent-color:var(--rosa2)}
       </p>
       <div id="zonaDrop">Arrastra tus fotos aquí o haz clic para elegirlas<br><small>(las que quieras, se optimizan solas)</small></div>
       <input type="file" id="inputFotos" accept="image/*" multiple class="oculto">
+      <div class="fila" style="margin-top:14px">
+        <button class="btn sec" id="btnVerFotos" style="margin:0;flex:1"></button>
+      </div>
       <div id="gridFotos"></div>
+      <button class="btn sec" id="masFotos" style="width:100%;display:none"></button>
       <div id="contadorFotos"></div>
     </div>
 
@@ -890,14 +894,46 @@ async function subir(files) {
   cargarFotos();
 }
 
+/* Con cientos de fotos, mostrarlas todas hace eterno el panel: quedan
+   escondidas y se van pidiendo de tanda en tanda. */
+let FOTOS_LISTA = [];
+let fotosVisibles = false;
+const FOTOS_POR_TANDA = 60;
+let fotosPintadas = 0;
+
 async function cargarFotos() {
   let j;
-  try { j = await pedirJSON("/api/archivos?carpeta=fotos"); }
+  try { j = await pedirJSON("/api/archivos?carpeta=fotos&t=" + Date.now()); }
   catch (e) { return aviso("No se pudieron cargar las fotos: " + e.message, "error"); }
   if (j.error) return aviso("Backblaze: " + j.error, "error");
+  FOTOS_LISTA = j.archivos || [];
+  fotosPintadas = 0;
   grid.innerHTML = "";
-  const fotos = j.archivos || [];
-  fotos.forEach(f => {
+  pintarBotonFotos();
+  if (fotosVisibles) pintarTandaFotos();
+  $("contadorFotos").textContent = FOTOS_LISTA.length
+    ? FOTOS_LISTA.length + " foto(s) en la galaxia"
+    : "Aún no hay fotos — sube las primeras ✨";
+}
+
+function pintarBotonFotos() {
+  const b = $("btnVerFotos");
+  b.style.display = FOTOS_LISTA.length ? "" : "none";
+  b.textContent = fotosVisibles
+    ? "🙈 Ocultar las fotos"
+    : "🖼️ Ver las fotos (" + FOTOS_LISTA.length + ")";
+  $("masFotos").style.display =
+    (fotosVisibles && fotosPintadas < FOTOS_LISTA.length) ? "" : "none";
+  if (fotosVisibles && fotosPintadas < FOTOS_LISTA.length) {
+    $("masFotos").textContent = "Ver " +
+      Math.min(FOTOS_POR_TANDA, FOTOS_LISTA.length - fotosPintadas) +
+      " más  (van " + fotosPintadas + " de " + FOTOS_LISTA.length + ")";
+  }
+}
+
+function pintarTandaFotos() {
+  const hasta = Math.min(fotosPintadas + FOTOS_POR_TANDA, FOTOS_LISTA.length);
+  FOTOS_LISTA.slice(fotosPintadas, hasta).forEach(f => {
     const div = document.createElement("div");
     div.className = "foto";
     div.innerHTML = `<img src="${f.url}" loading="lazy" alt="">
@@ -915,13 +951,22 @@ async function cargarFotos() {
         body: JSON.stringify({ fileName: f.fileName, fileId: f.fileId })
       });
       const res = await r.json();
-      if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error");
+      if (!r.ok) return aviso("No se pudo borrar: " + (res.error || r.status), "error", true);
       cargarFotos();
     });
     grid.appendChild(div);
   });
-  $("contadorFotos").textContent = fotos.length ? fotos.length + " foto(s) en la galaxia" : "Aún no hay fotos — sube las primeras ✨";
+  fotosPintadas = hasta;
+  pintarBotonFotos();
 }
+
+$("btnVerFotos").addEventListener("click", () => {
+  fotosVisibles = !fotosVisibles;
+  if (fotosVisibles) { if (!fotosPintadas) pintarTandaFotos(); }
+  else { grid.innerHTML = ""; fotosPintadas = 0; }
+  pintarBotonFotos();
+});
+$("masFotos").addEventListener("click", pintarTandaFotos);
 
 /* ---------- VIDEOS (modo Netflix) ---------- */
 const zonaV = $("zonaDropVideo"), inputVideos = $("inputVideos"), gridV = $("gridVideosAdmin");
