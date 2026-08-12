@@ -193,6 +193,15 @@ body.datos-listos #cargando{opacity:0;visibility:hidden}
 #controles button:focus,#cerrarVideo:focus,.tile:focus{
   outline:3px solid #fff;outline-offset:3px;
 }
+/* el recuadro es para navegar con el control de la tele: si se está
+   usando el dedo o el mouse, estorba y no debe aparecer */
+body.con-puntero .card-video:focus,body.con-puntero #btnVistas:focus,
+body.con-puntero #btnVolverFlix:focus,body.con-puntero .logo-flix:focus,
+body.con-puntero #controles button:focus,body.con-puntero #cerrarVideo:focus,
+body.con-puntero .tile:focus,body.con-puntero .chip:focus{
+  outline:none;
+}
+body.con-puntero .card-video:focus{transform:none}
 .card-video:focus{transform:scale(1.06);z-index:3}
 .card-video:focus-visible{outline:4px solid #e50914;outline-offset:4px}
 /* algunas teles y iOS pintan su propio boton de play gigante sobre el video:
@@ -676,7 +685,7 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 
 <!-- ======= BARRA SUPERIOR ======= -->
 <div id="topbar">
-  <div class="chip" id="btnInicioGalaxia">← Inicio</div>
+  <div class="chip" id="btnInicioGalaxia" style="display:none">← Inicio</div>
   <div class="chip" id="btnCarta">💌 Léeme</div>
 </div>
 
@@ -1037,6 +1046,14 @@ function esSmartTV() {
   return /smart-?tv|smarttv|tizen|web0s|webos|netcast|hbbtv|viera|bravia|aquos|googletv|android\s*tv|crkey|aft[a-z]{1,3}|firetv|fire\s*tv|philips\s*tv|inettv|opera\s*tv|vidaa|roku|dlnadoc|netrange/i.test(ua)
       || (/android/i.test(ua) && !/mobile/i.test(ua) && !("ontouchstart" in window));
 }
+
+/* Se marca cuándo se está usando dedo o mouse, para no dibujar el
+   recuadro de selección (que solo hace falta con el control de la tele) */
+addEventListener("pointerdown", () => document.body.classList.add("con-puntero"), true);
+addEventListener("keydown", e => {
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Tab","Enter"].includes(e.key) || e.keyCode === 13)
+    document.body.classList.remove("con-puntero");
+}, true);
 
 const CLAVE_PANTALLA = "jeniflix_pantalla";
 function recordarPantalla(p) { try { localStorage.setItem(CLAVE_PANTALLA, p); } catch (e) {} }
@@ -1887,7 +1904,18 @@ setInterval(pintarEstadoSorpresa, 1000);
 
 tileSorpresa.addEventListener("click", () => {
   if (desbloqueadaParaMi()) {
-    if (CONFIG.musicaActiva) { try { audio.play(); estadoPlay(true); } catch(e){} }
+    if (CONFIG.musicaActiva) {
+      // se "desbloquea" el audio aquí, dentro del clic (los navegadores solo
+      // dejan sonar si viene de un toque), pero empieza un segundo después
+      try {
+        audio.muted = true;
+        audio.play().then(() => {
+          setTimeout(() => { audio.muted = false; audio.currentTime = 0; estadoPlay(true); }, 1000);
+        }).catch(() => {
+          setTimeout(() => { audio.muted = false; audio.play().then(() => estadoPlay(true)).catch(() => {}); }, 1000);
+        });
+      } catch (e) {}
+    }
     entrarGalaxia();
     return;
   }
@@ -1939,6 +1967,37 @@ const modal = document.getElementById("modalCarta"),
       firmaCarta = document.getElementById("firmaCarta");
 let escribiendo = null;
 
+/* Tecleo de máquina de escribir, generado al vuelo (no hay que descargar
+   ningún archivo): un golpecito seco por cada letra que aparece. */
+let audioCtx = null;
+function tecla() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t = audioCtx.currentTime;
+
+    // ruido corto = el golpe del tipo contra el papel
+    const largo = Math.floor(audioCtx.sampleRate * 0.03);
+    const buf = audioCtx.createBuffer(1, largo, audioCtx.sampleRate);
+    const datos = buf.getChannelData(0);
+    for (let i = 0; i < largo; i++) datos[i] = (Math.random() * 2 - 1) * (1 - i / largo);
+    const ruido = audioCtx.createBufferSource();
+    ruido.buffer = buf;
+
+    const filtro = audioCtx.createBiquadFilter();
+    filtro.type = "bandpass";
+    filtro.frequency.value = 1600 + Math.random() * 900;
+    filtro.Q.value = 1.1;
+
+    const vol = audioCtx.createGain();
+    vol.gain.setValueAtTime(0.075, t);
+    vol.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+
+    ruido.connect(filtro); filtro.connect(vol); vol.connect(audioCtx.destination);
+    ruido.start(t); ruido.stop(t + 0.05);
+  } catch (e) {}
+}
+
 /* lluvia de corazones mientras la carta está abierta */
 let lluviaCarta = null;
 function empezarLluvia() {
@@ -1960,7 +2019,10 @@ document.getElementById("btnCarta").addEventListener("click", () => {
   clearInterval(escribiendo);
   let i = 0;
   escribiendo = setInterval(() => {
-    textoCarta.textContent += CONFIG.carta[i++] || "";
+    const letra = CONFIG.carta[i++] || "";
+    textoCarta.textContent += letra;
+    // suena solo con letras: los espacios y saltos van mudos, como de verdad
+    if (letra.trim()) tecla();
     if (i >= CONFIG.carta.length) {
       clearInterval(escribiendo);
       firmaCarta.textContent = CONFIG.firma;
@@ -1969,6 +2031,17 @@ document.getElementById("btnCarta").addEventListener("click", () => {
 });
 document.getElementById("cerrarCarta").addEventListener("click", cerrarCartaModal);
 modal.addEventListener("click", e => { if (e.target === modal) cerrarCartaModal(); });
+
+/* Las frases del gatito salen todas antes de repetirse: se barajan y
+   se van sacando una a una; cuando se acaban, se barajan de nuevo. */
+let bolsaKitty = [];
+function siguienteFraseKitty(lista) {
+  if (!bolsaKitty.length || bolsaKitty.algunaFuera !== lista.length) {
+    bolsaKitty = alAzar(lista);
+    bolsaKitty.algunaFuera = lista.length;      // si editas la lista, se rehace
+  }
+  return bolsaKitty.pop();
+}
 
 /* --- stickers flotantes --- */
 const posiciones = [
@@ -1990,7 +2063,7 @@ posiciones.forEach((pos, i) => {
   el.addEventListener("click", () => {
     const kitty = Array.isArray(CONFIG.frasesKitty) ? CONFIG.frasesKitty : [];
     if (!kitty.length) { ráfagaCorazones(el.getBoundingClientRect().left + 40, el.getBoundingClientRect().top, 6); return; }
-    const frase = kitty[Math.floor(Math.random() * kitty.length)];
+    const frase = siguienteFraseKitty(kitty);
     burbuja.textContent = frase;
     const r = el.getBoundingClientRect();
     burbuja.style.left = Math.min(Math.max(r.left + r.width/2 - 115, 8), innerWidth - 238) + "px";
@@ -2212,12 +2285,17 @@ function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
   const fuente = `bold ${fs}px 'Segoe UI', Arial`;
   const medidor = document.createElement("canvas").getContext("2d");
   medidor.font = fuente;
-  const ancho = Math.ceil(medidor.measureText(txt).width) + fs * 1.4;   // margen para el brillo
+  // margen amplio: el brillo se sale del texto y Safari mide de menos los emojis
+  const ancho = Math.ceil(medidor.measureText(txt).width) + fs * 2.2;
   const alto = Math.ceil(fs * 2);
 
+  // El lienzo se lleva a medidas "potencia de dos" (256, 512, 1024…).
+  // Es lo único que algunos equipos como el iPad aceptan sin reescalar
+  // por su cuenta, que era lo que descentraba y cortaba el texto.
+  const pot2 = n => { let p = 64; while (p < n) p *= 2; return p; };
   const c = document.createElement("canvas");
-  c.width = Math.max(w || 0, ancho);
-  c.height = Math.max(h || 0, alto);
+  c.width = pot2(Math.max(w || 0, ancho));
+  c.height = pot2(Math.max(h || 0, alto));
   const x = c.getContext("2d");
   x.font = fuente;
   x.textAlign = "center"; x.textBaseline = "middle";
@@ -2226,6 +2304,12 @@ function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
   x.shadowBlur = 18; x.fillText(txt, c.width/2, c.height/2);
 
   const tex = new THREE.CanvasTexture(c);
+  // Sin esto, en iPad y otros equipos el motor reescala la textura a
+  // medidas "potencia de dos" y recorta el texto (el famoso "TE AM").
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.proporcion = c.width / c.height;      // ancho ÷ alto
   return tex;
 }
