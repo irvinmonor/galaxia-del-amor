@@ -642,6 +642,7 @@ $("btnSalir").addEventListener("click", async () => { await sb.auth.signOut(); v
 
 /* ---------- CONFIG ---------- */
 /* las mismas listas que trae la página de fábrica (para prellenar el panel) */
+const MUSICA_POR_DEFECTO = "https://f005.backblazeb2.com/file/jenifferbragg/musica/galaxia.mp3";
 const FRASES_DE_FABRICA = [
   "Te amo","JENIFFER","Nosotros","Tu risa","Nuestra galaxia",
   "979 fotos","Desde 2025","Equipo de dos","Más por venir","Sin final"
@@ -688,8 +689,10 @@ async function cargarConfig() {
   // para poder editarlas o borrarlas desde aquí
   $("fFrases").value = (d.frases !== undefined ? d.frases : FRASES_DE_FABRICA).join("\n");
   $("fFrasesKitty").value = (d.frasesKitty !== undefined ? d.frasesKitty : KITTY_DE_FABRICA).join("\n");
-  $("fMusica").checked = !!d.musicaActiva;
-  $("fMusicaUrl").value = d.musicaUrl || "";
+  // si nunca se ha tocado, la música viene encendida con la canción subida;
+  // así no se apaga sola al guardar desde un panel que se abrió antes
+  $("fMusica").checked = d.musicaActiva !== undefined ? !!d.musicaActiva : true;
+  $("fMusicaUrl").value = d.musicaUrl || MUSICA_POR_DEFECTO;
   $("fSorpresa").checked = !!d.sorpresaActiva;
   $("fSorpresaMsg").value = d.sorpresaMensaje || "Se desbloquea el 12 de agosto";
   $("fFondo").value = d.fondoPortada || "";

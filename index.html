@@ -726,8 +726,8 @@ const DEFAULTS = {
   flixLogo: "JENIFLIX",
   flixEtiqueta: "Películas",
   fondoPortada: "",   // URL de imagen de fondo para la portada (vacío = tema oscuro)
-  musicaActiva: false,
-  musicaUrl: "https://www.dropbox.com/scl/fi/qfv28rqu6b36jwusao4x4/Love.MP3?rlkey=ptjd053374f028aa4jfcfrfxn&st=1j0j51eo&raw=1",
+  musicaActiva: true,
+  musicaUrl: "https://f005.backblazeb2.com/file/jenifferbragg/musica/galaxia.mp3",
   nombre: "JENIFFER",
   tituloIntro: "Para Ti, Jeniffer 💖",
   subtituloIntro: "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.",
@@ -2326,7 +2326,7 @@ const texCentro = texturaTexto(CONFIG.mensajeCentral, 90);
 const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texCentro, transparent: true, depthWrite: false }));
 const altoCentro = 32;
 textoCentro.scale.set(altoCentro * (texCentro.proporcion || 4), altoCentro, 1);
-textoCentro.position.y = -58; textoCentro.renderOrder = 999;
+textoCentro.position.y = 58; textoCentro.renderOrder = 999;   // arriba del corazón
 scene.add(textoCentro);
 
 /* ============================================================
