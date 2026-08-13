@@ -2244,7 +2244,7 @@ async function mandarEstado(accion) {
   if (!canal) return estadoParty("No hay conexión con la sala.", true);
   try {
     // sin tiempo: solo pausa o reanuda, sin moverles el minuto
-    await canal.send({ type: "broadcast", event: "estado", payload: { accion, de: "panel-" + MI_ID_ADMIN } });
+    await canal.send({ type: "broadcast", event: "estado", payload: { accion, dePanel: true, de: "panel-" + MI_ID_ADMIN } });
     estadoParty(accion === "pause" ? "Pausado para todos ❚❚" : "Reanudado para todos ▶");
   } catch (e) { estadoParty("No se pudo: " + e.message, true); }
 }

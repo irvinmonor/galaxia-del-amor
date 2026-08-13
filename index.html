@@ -1355,16 +1355,16 @@ function reubicarAvisos() {
 async function aplicarEstadoRemoto(p) {
   if (!p || p.de === MI_ID) return;
   if (!playerVideo.classList.contains("abierto") || playerVideo.classList.contains("incrustado")) return;
+  // SOLO obedece las órdenes que vienen del PANEL (botón "pausar/reanudar
+  // a todos"). Ya NO se sincroniza automáticamente entre dos aparatos que
+  // vean lo mismo: eso hacía un bucle infinito de pausa/reanuda.
+  if (!p.dePanel) return;
   aplicandoRemoto = true;
   try {
-    if (typeof p.t === "number" && isFinite(vid.duration) && Math.abs(vid.currentTime - p.t) > 1.5) {
-      vid.currentTime = p.t;
-    }
-    if (p.accion === "play") { await vid.play().catch(() => {}); avisoParty("▶ Reanudado del otro lado"); }
-    else if (p.accion === "pause") { vid.pause(); avisoParty("❚❚ Pausado del otro lado"); }
-    else if (p.accion === "seek") avisoParty("⏩ Adelantaron a " + reloj(p.t));
+    if (p.accion === "play") { await vid.play().catch(() => {}); }
+    else if (p.accion === "pause") { vid.pause(); }
   } finally {
-    setTimeout(() => { aplicandoRemoto = false; }, 400);
+    setTimeout(() => { aplicandoRemoto = false; }, 600);
   }
 }
 
@@ -1387,10 +1387,9 @@ function unirseALaSala() {
   } catch (e) { canalSala = null; }
 }
 
-/* avisar a los demás de lo que hago con el video */
-vid.addEventListener("play",  () => { if (!aplicandoRemoto) emitirSala("estado", { accion: "play",  t: vid.currentTime }); });
-vid.addEventListener("pause", () => { if (!aplicandoRemoto) emitirSala("estado", { accion: "pause", t: vid.currentTime }); });
-vid.addEventListener("seeked",() => { if (!aplicandoRemoto) emitirSala("estado", { accion: "seek",  t: vid.currentTime }); });
+/* Ya NO se emite lo que uno hace con el video. Cada aparato reproduce
+   independiente; solo el panel puede pausar/reanudar a todos a la vez.
+   Así se acabó el bucle de "pausado/reanudado del otro lado". */
 
 /* se entra a la sala desde el arranque, no solo al abrir una película:
    así llegan los avisos y las actualizaciones aunque estén en el menú */
