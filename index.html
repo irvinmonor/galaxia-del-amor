@@ -1368,11 +1368,44 @@ async function aplicarEstadoRemoto(p) {
   }
 }
 
+/* ============================================================
+   ⏱️ SINCRONIZAR LA POSICIÓN AL ENTRAR
+   El que abre una película pregunta "¿alguien la está viendo y en
+   qué minuto va?". Quien la esté viendo responde su minuto. Así el
+   segundo entra sincronizado con el primero, en vez de empezar de
+   cero. Esto NO fuerza play/pausa (por eso no hace bucle): solo
+   comparte el minuto, una vez, al entrar.
+   ============================================================ */
+function preguntarPosicion(videoKey) {
+  return new Promise(resolve => {
+    if (!canalSala) return resolve(null);
+    let resuelto = false;
+    const alResponder = ({ payload }) => {
+      if (resuelto || !payload || payload.de === MI_ID) return;
+      if (payload.video !== videoKey || typeof payload.t !== "number") return;
+      resuelto = true;
+      resolve(payload.t + 0.3);            // +0.3s para compensar el instante que tardó
+    };
+    canalSala.on("broadcast", { event: "posicion" }, alResponder);
+    // preguntar a quien esté viendo esta película
+    try { canalSala.send({ type: "broadcast", event: "pregunta-pos", payload: { de: MI_ID, video: videoKey } }); } catch (e) {}
+    // si nadie responde en 1.2s, se entra normal (desde donde uno la dejó)
+    setTimeout(() => { if (!resuelto) { resuelto = true; resolve(null); } }, 1200);
+  });
+}
+
 function unirseALaSala() {
   if (!SB || canalSala) return;
   try {
     canalSala = SB.channel("jeniflix-party", { config: { broadcast: { self: false } } });
     canalSala.on("broadcast", { event: "estado" }, ({ payload }) => aplicarEstadoRemoto(payload));
+    // alguien pregunta en qué minuto va esta película: si la estoy viendo, respondo
+    canalSala.on("broadcast", { event: "pregunta-pos" }, ({ payload }) => {
+      if (!payload || payload.de === MI_ID) return;
+      if (!playerVideo.classList.contains("abierto") || playerVideo.classList.contains("incrustado")) return;
+      if (videoActual !== payload.video) return;
+      try { canalSala.send({ type: "broadcast", event: "posicion", payload: { de: MI_ID, video: videoActual, t: vid.currentTime } }); } catch (e) {}
+    });
     canalSala.on("broadcast", { event: "aviso" }, ({ payload }) => mostrarAvisoParty(payload || {}));
     // el panel avisa cuando guarda algo: así se ve al momento, sin recargar
     canalSala.on("broadcast", { event: "refrescar" }, () => revisarCambios(true));
@@ -1471,7 +1504,12 @@ async function abrirVideo(v) {
   // si iOS cierra la pestaña por memoria, al volver se retoma esta película
   recordarPantalla("video");
   try { localStorage.setItem("jeniflix_viendo", videoActual); } catch (e) {}
-  const desde = (posicionDe(videoActual) || {}).t || 0;
+
+  unirseALaSala();
+  // ¿alguien más está viendo ESTA película ahora mismo? si sí, entro en su
+  // minuto (quedan sincronizados); si nadie la ve, empieza en 0:00
+  const minutoDeLOtro = await preguntarPosicion(videoActual);
+  const desde = minutoDeLOtro != null ? minutoDeLOtro : 0;
 
   if (hls) { hls.destroy(); hls = null; }
   const esHls = /\.m3u8(\?|$)/i.test(v.url);
@@ -1489,18 +1527,17 @@ async function abrirVideo(v) {
     vid.load();
   }
 
-  // retomar donde se quedó
+  // retomar donde se quedó (o donde va el otro que ya la está viendo)
   if (desde > 0) {
     const saltar = () => {
       vid.currentTime = desde;
-      avisoReanudar("Continuando desde " + reloj(desde) + " ⏵");
+      avisoReanudar((minutoDeLOtro != null ? "Sincronizado en " : "Continuando desde ") + reloj(desde) + " ⏵");
       vid.removeEventListener("loadedmetadata", saltar);
     };
     vid.addEventListener("loadedmetadata", saltar);
   }
 
   cargarSubtitulos(v.subtitulo);   // si el video trae subtítulos, se activan solos
-  unirseALaSala();                 // para ver juntos y recibir avisos
 
   vid.play().catch(() => {});   // si el navegador bloquea, queda el botón gigante
   moverRaton();
