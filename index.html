@@ -1499,6 +1499,7 @@ async function abrirVideo(v) {
   }
   ponerTituloArriba(v);
   playerVideo.classList.add("abierto", "cargando");
+  yaReintente = false;            // cada película empieza con su intento limpio
   playerVideo.classList.remove("ocultar-ui");
   videoActual = v.fileName || v.url;
   // si iOS cierra la pestaña por memoria, al volver se retoma esta película
@@ -1506,15 +1507,14 @@ async function abrirVideo(v) {
   try { localStorage.setItem("jeniflix_viendo", videoActual); } catch (e) {}
 
   unirseALaSala();
-  // ¿alguien más está viendo ESTA película ahora mismo? si sí, entro en su
-  // minuto (quedan sincronizados); si nadie la ve, empieza en 0:00
-  const minutoDeLOtro = await preguntarPosicion(videoActual);
-  const desde = minutoDeLOtro != null ? minutoDeLOtro : 0;
 
   if (hls) { hls.destroy(); hls = null; }
   const esHls = /\.m3u8(\?|$)/i.test(v.url);
 
-  // Safari reproduce HLS nativo; los demás navegadores usan hls.js
+  // IMPORTANTE: el video se carga y arranca AQUÍ MISMO, sin esperar nada.
+  // En el iPad, si se pone el src o se llama a play() después de un "await",
+  // Safari ya no lo considera parte del clic y bloquea la reproducción: se
+  // quedaba el aro girando sin empezar nunca.
   if (esHls && !vid.canPlayType("application/vnd.apple.mpegurl")) {
     try {
       if (!window.Hls) await cargarScript("https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js");
@@ -1527,20 +1527,24 @@ async function abrirVideo(v) {
     vid.load();
   }
 
-  // retomar donde se quedó (o donde va el otro que ya la está viendo)
-  if (desde > 0) {
-    const saltar = () => {
-      vid.currentTime = desde;
-      avisoReanudar((minutoDeLOtro != null ? "Sincronizado en " : "Continuando desde ") + reloj(desde) + " ⏵");
-      vid.removeEventListener("loadedmetadata", saltar);
-    };
-    vid.addEventListener("loadedmetadata", saltar);
-  }
-
   cargarSubtitulos(v.subtitulo);   // si el video trae subtítulos, se activan solos
 
   vid.play().catch(() => {});   // si el navegador bloquea, queda el botón gigante
   moverRaton();
+
+  // La sincronización se pregunta APARTE, sin frenar la reproducción: si
+  // alguien más está viendo esta misma película, se salta a su minuto en
+  // cuanto responda (un instante después).
+  preguntarPosicion(videoActual).then(minutoDeLOtro => {
+    if (minutoDeLOtro == null) return;                       // nadie más la ve
+    if (videoActual !== (v.fileName || v.url)) return;        // ya cambió de película
+    const saltar = () => {
+      try { vid.currentTime = minutoDeLOtro; } catch (e) {}
+      avisoReanudar("Sincronizado en " + reloj(minutoDeLOtro) + " ⏵");
+    };
+    if (vid.readyState >= 1) saltar();
+    else vid.addEventListener("loadedmetadata", saltar, { once: true });
+  });
 }
 
 function avisoReanudar(texto) {
@@ -1600,43 +1604,32 @@ vid.addEventListener("progress", () => {
 vid.addEventListener("ended", () => { playerVideo.classList.add("pausado"); mostrarUI(); });
 
 /* ============================================================
-   🔌 RECUPERACIÓN DE RED
-   Si el internet se corta un momento (WiFi que va y viene), el
-   video se atasca. En vez de mostrar error, reintenta solo desde
-   donde iba, sin que ella tenga que hacer nada.
+   🔌 SI EL VIDEO FALLA DE VERDAD
+   OJO: en el iPad/iPhone el evento "stalled" salta todo el tiempo
+   aunque el video vaya bien (Safari pausa la descarga sola). Por eso
+   aquí NO se escucha "stalled" ni se recarga el video en bucle: eso
+   dejaba el aro girando para siempre sin llegar a reproducir nunca.
+   Solo se actúa ante un error real, y UNA sola vez.
    ============================================================ */
-let reintentoRed = null;
-function recuperarVideo(motivo) {
+let yaReintente = false;
+vid.addEventListener("error", () => {
   if (!playerVideo.classList.contains("abierto") || playerVideo.classList.contains("incrustado")) return;
-  if (reintentoRed) return;                         // ya hay un reintento en curso
-  playerVideo.classList.add("cargando");
+  if (!vid.error) return;                    // error real, no un aviso pasajero
+  if (yaReintente) {                         // ya se intentó: avisar y no insistir
+    playerVideo.classList.remove("cargando");
+    document.getElementById("tituloReproduciendo").textContent = "No se pudo cargar el video 😢";
+    return;
+  }
+  yaReintente = true;
   const desde = vid.currentTime || 0;
-  let intentos = 0;
-  reintentoRed = setInterval(() => {
-    intentos++;
-    if (vid.readyState >= 3 && !vid.error) {         // ya volvió a tener datos
-      clearInterval(reintentoRed); reintentoRed = null;
-      playerVideo.classList.remove("cargando");
-      if (!vid.paused) vid.play().catch(() => {});
-      return;
-    }
-    // recargar la fuente y saltar a donde iba
-    try {
-      const src = vid.currentSrc || vid.src;
-      if (src) {
-        vid.load();
-        const alListo = () => { try { vid.currentTime = desde; } catch (e) {} vid.play().catch(() => {}); };
-        vid.addEventListener("loadedmetadata", alListo, { once: true });
-      }
-    } catch (e) {}
-    if (intentos > 40) { clearInterval(reintentoRed); reintentoRed = null; }   // ~2 min intentando
-  }, 3000);
-}
-
-vid.addEventListener("stalled", () => recuperarVideo("stalled"));
-vid.addEventListener("error", () => recuperarVideo("error"));
-// cuando la conexión vuelve, se reintenta al instante
-addEventListener("online", () => { if (playerVideo.classList.contains("abierto")) recuperarVideo("online"); });
+  try {
+    vid.load();
+    vid.addEventListener("loadedmetadata", () => {
+      try { if (desde > 0) vid.currentTime = desde; } catch (e) {}
+      vid.play().catch(() => {});
+    }, { once: true });
+  } catch (e) {}
+});
 
 function pintarTiempo() {
   const d = vid.duration || 0;
