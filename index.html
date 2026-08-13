@@ -931,6 +931,7 @@ async function entrarGalaxia() {
   // se guarda "inicio" a propósito: al recargar dentro de la galaxia
   // deben volver a la portada, no quedarse en la sorpresa
   recordarPantalla("inicio");
+  crearGalaxiaDeFotos();      // las fotos se cargan al entrar, no antes
   document.getElementById("intro").classList.add("oculto");
   document.body.classList.add("iniciado");
   if (CONFIG.musicaActiva) {
@@ -1468,6 +1469,9 @@ async function abrirVideo(v) {
   playerVideo.classList.add("abierto", "cargando");
   playerVideo.classList.remove("ocultar-ui");
   videoActual = v.fileName || v.url;
+  // si iOS cierra la pestaña por memoria, al volver se retoma esta película
+  recordarPantalla("video");
+  try { localStorage.setItem("jeniflix_viendo", videoActual); } catch (e) {}
   const desde = (posicionDe(videoActual) || {}).t || 0;
 
   if (hls) { hls.destroy(); hls = null; }
@@ -1513,6 +1517,8 @@ function avisoReanudar(texto) {
 
 function cerrarReproductor() {
   cerrandoAdrede = true;          // evita que el pausado automático se dispare al cerrar
+  recordarPantalla("jeniflix");
+  try { localStorage.removeItem("jeniflix_viendo"); } catch (e) {}
   if (playerVideo.classList.contains("incrustado")) {
     marcoVideo.removeAttribute("src");     // detiene el video del marco
     playerVideo.classList.remove("incrustado");
@@ -1730,6 +1736,7 @@ function enfocarPrimera() {
 function entrarJeniflix(conAnimacion) {
   recordarPantalla("jeniflix");
   pararMusica();                 // la canción es solo de la galaxia
+  liberarFotosGalaxia();         // suelta la memoria antes de ver una película
   pintarVideos();
   document.getElementById("intro").classList.add("oculto");
   // OJO: no se deja ninguna película seleccionada al entrar. En la tele, el
@@ -1856,6 +1863,7 @@ document.getElementById("btnVistas").addEventListener("click", () => {
 /* --- salir de la galaxia y volver a la portada --- */
 document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
   pararMusica();                                            // callar la música
+  liberarFotosGalaxia();                                    // y soltar su memoria
   modal.classList.remove("abierta");                        // cerrar la carta si estaba abierta
   clearInterval(escribiendo);
   burbuja.classList.remove("visible");                      // quitar la burbuja del gatito
@@ -1959,7 +1967,17 @@ fondoListo.then(() => {
     // En la tele se entra siempre directo a las películas: la portada solo
     // estorba con el control. En PC y celular se retoma donde estaban.
     // La galaxia nunca se retoma: siempre arranca desde la portada.
-    if (esSmartTV() || pantallaGuardada() === "jeniflix") entrarJeniflix(false);
+    const previa = pantallaGuardada();
+    if (esSmartTV() || previa === "jeniflix" || previa === "video") entrarJeniflix(false);
+    // si iOS la sacó de una película por falta de memoria, se la devolvemos
+    if (previa === "video") {
+      let viendo = null;
+      try { viendo = localStorage.getItem("jeniflix_viendo"); } catch (e) {}
+      if (viendo) setTimeout(() => {
+        const v = VIDEOS.find(x => (x.fileName || x.url) === viendo);
+        if (v) abrirVideo(v);
+      }, 400);
+    }
     document.body.classList.add("datos-listos");            // recién ahora se revela
   });
 });
@@ -2422,8 +2440,26 @@ function alAzar(lista) {
    igual que las estrellas del fondo. Todas giran juntas, así los
    brazos no se deforman con el tiempo.
    ============================================================ */
-(async function crearGalaxiaDeFotos() {
-  if (!FOTOS.length) return;
+/* Suelta de memoria las fotos de la galaxia. En el iPad, tener cientos de
+   imágenes cargadas mientras se ve una película satura la memoria y iOS
+   cierra la pestaña (por eso las sacaba de la película). */
+let galaxiaCargada = false;
+function liberarFotosGalaxia() {
+  if (!galaxiaCargada) return;
+  grupoFotos.children.slice().forEach(sp => {
+    if (sp.material) {
+      if (sp.material.map) sp.material.map.dispose();
+      sp.material.dispose();
+    }
+    grupoFotos.remove(sp);
+  });
+  if (renderer && renderer.renderLists) renderer.renderLists.dispose();
+  galaxiaCargada = false;
+}
+
+async function crearGalaxiaDeFotos() {
+  if (!FOTOS.length || galaxiaCargada) return;
+  galaxiaCargada = true;
   const urls = alAzar(FOTOS);
   const total = urls.length;
 
@@ -2455,8 +2491,9 @@ function alAzar(lista) {
       sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
       grupoFotos.add(sp);
     });
+    if (!galaxiaCargada) return;      // salieron de la galaxia a media carga
   }
-})();
+}
 
 /* --- frases orbitando (se reducen si hay fotos) --- */
 const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
