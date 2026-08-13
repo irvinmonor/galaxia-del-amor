@@ -931,7 +931,7 @@ async function entrarGalaxia() {
   // se guarda "inicio" a propósito: al recargar dentro de la galaxia
   // deben volver a la portada, no quedarse en la sorpresa
   recordarPantalla("inicio");
-  crearGalaxiaDeFotos();      // las fotos se cargan al entrar, no antes
+  montarGalaxia();            // la escena 3D y sus fotos se construyen aquí
   document.getElementById("intro").classList.add("oculto");
   document.body.classList.add("iniciado");
   if (CONFIG.musicaActiva) {
@@ -1736,7 +1736,7 @@ function enfocarPrimera() {
 function entrarJeniflix(conAnimacion) {
   recordarPantalla("jeniflix");
   pararMusica();                 // la canción es solo de la galaxia
-  liberarFotosGalaxia();         // suelta la memoria antes de ver una película
+  desmontarGalaxia();            // libera TODO el 3D antes de ver una película
   pintarVideos();
   document.getElementById("intro").classList.add("oculto");
   // OJO: no se deja ninguna película seleccionada al entrar. En la tele, el
@@ -1863,7 +1863,7 @@ document.getElementById("btnVistas").addEventListener("click", () => {
 /* --- salir de la galaxia y volver a la portada --- */
 document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
   pararMusica();                                            // callar la música
-  liberarFotosGalaxia();                                    // y soltar su memoria
+  desmontarGalaxia();                                       // y soltar toda su memoria
   modal.classList.remove("abierta");                        // cerrar la carta si estaba abierta
   clearInterval(escribiendo);
   burbuja.classList.remove("visible");                      // quitar la burbuja del gatito
@@ -2131,499 +2131,549 @@ posiciones.forEach((pos, i) => {
 /* ============================================================
    🌌 ESCENA 3D
    ============================================================ */
-const canvas = document.getElementById("c");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-renderer.setSize(innerWidth, innerHeight);
-const scene = new THREE.Scene();
-/* espacio profundo pero con vida: azul-violeta oscuro, no negro triste */
-scene.background = new THREE.Color(0x08031c);
-scene.fog = new THREE.FogExp2(0x08031c, 0.0006);
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 6000);
-let targetDist = 560, currentDist = 700, rotX = .32, rotY = 0;
+/* La escena 3D se construye SOLO al entrar a la galaxia y se destruye al
+   salir. Así, mientras se ve una película, no queda nada de 3D ocupando
+   memoria: en la tele y en el iPad eso era lo que cerraba la pestaña. */
+let escenaViva = false;
+let renderer = null, scene = null, camera = null, animando = false;
 
-function texturaCorazon(color = "#ff4fa0") {
-  const c = document.createElement("canvas"); c.width = c.height = 64;
-  const x = c.getContext("2d");
-  x.translate(32, 34); x.scale(1.15, 1.15);
-  x.beginPath();
-  x.moveTo(0, 10);
-  x.bezierCurveTo(-16, -6, -8, -20, 0, -10);
-  x.bezierCurveTo(8, -20, 16, -6, 0, 10);
-  x.closePath();
-  x.shadowColor = color; x.shadowBlur = 12; x.fillStyle = color; x.fill();
-  return new THREE.CanvasTexture(c);
-}
-function texturaBrillo() {
-  const c = document.createElement("canvas"); c.width = c.height = 64;
-  const x = c.getContext("2d");
-  const g = x.createRadialGradient(32, 32, 2, 32, 32, 30);
-  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.4, "rgba(255,200,240,.6)"); g.addColorStop(1, "rgba(0,0,0,0)");
-  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
-}
+function montarGalaxia() {
+  if (escenaViva) return;
+  escenaViva = true;
 
-/* estrella de verdad: núcleo pequeño y definido con un halo mínimo,
-   no una bola difusa */
-function texturaEstrella() {
-  const c = document.createElement("canvas"); c.width = c.height = 32;
-  const x = c.getContext("2d");
-  const g = x.createRadialGradient(16, 16, 0, 16, 16, 15);
-  g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(.15, "rgba(255,255,255,.95)");
-  g.addColorStop(.35, "rgba(230,235,255,.35)");
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  x.fillStyle = g; x.fillRect(0, 0, 32, 32);
-  return new THREE.CanvasTexture(c);
-}
+  const canvas = document.getElementById("c");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  scene = new THREE.Scene();
+  /* espacio profundo pero con vida: azul-violeta oscuro, no negro triste */
+  scene.background = new THREE.Color(0x08031c);
+  scene.fog = new THREE.FogExp2(0x08031c, 0.0006);
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 6000);
+  let targetDist = 560, currentDist = 700, rotX = .32, rotY = 0;
 
-/* --- galaxia espiral --- */
-let galaxia;
-(function galaxiaEspiral() {
-  const N = 9000, brazos = 4;
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-  const paleta = [new THREE.Color("#cfd8ff"), new THREE.Color("#ffffff"), new THREE.Color("#ffe3f2"), new THREE.Color("#b8c6ff")];
-  for (let i = 0; i < N; i++) {
-    const brazo = i % brazos;
-    const r = 60 + Math.pow(Math.random(), 1.6) * 620;
-    const ang = (brazo / brazos) * Math.PI * 2 + r * 0.0075 + (Math.random() - .5) * .55;
-    const disp = (Math.random() - .5) * (36 + r * .07);
-    pos[i*3]   = Math.cos(ang) * r + disp * (Math.random() - .5);
-    pos[i*3+1] = (Math.random() - .5) * (18 + r * .05);
-    pos[i*3+2] = Math.sin(ang) * r + disp * (Math.random() - .5);
-    const c = paleta[Math.floor(Math.random() * paleta.length)].clone();
-    c.multiplyScalar(.55 + Math.random() * .45);
-    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  function texturaCorazon(color = "#ff4fa0") {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const x = c.getContext("2d");
+    x.translate(32, 34); x.scale(1.15, 1.15);
+    x.beginPath();
+    x.moveTo(0, 10);
+    x.bezierCurveTo(-16, -6, -8, -20, 0, -10);
+    x.bezierCurveTo(8, -20, 16, -6, 0, 10);
+    x.closePath();
+    x.shadowColor = color; x.shadowBlur = 12; x.fillStyle = color; x.fill();
+    return new THREE.CanvasTexture(c);
   }
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-  const mat = new THREE.PointsMaterial({
-    size: 1.8, map: texturaEstrella(), vertexColors: true, transparent: true,
-    depthWrite: false, blending: THREE.AdditiveBlending
-  });
-  galaxia = new THREE.Points(geo, mat);
-  scene.add(galaxia);
-})();
+  function texturaBrillo() {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(32, 32, 2, 32, 32, 30);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.4, "rgba(255,200,240,.6)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
 
-/* --- cielo estrellado en dos capas, como el de verdad ---
-   miles de estrellas débiles al fondo y unas cuantas brillantes que
-   titilan; con colores reales (blanco azulado, blanco, ámbar) --- */
-let estrellasBrillantes = null;
-(function cielo() {
-  const capa = (n, R, tam, colores, brillo) => {
+  /* estrella de verdad: núcleo pequeño y definido con un halo mínimo,
+     no una bola difusa */
+  function texturaEstrella() {
+    const c = document.createElement("canvas"); c.width = c.height = 32;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(16, 16, 0, 16, 16, 15);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(.15, "rgba(255,255,255,.95)");
+    g.addColorStop(.35, "rgba(230,235,255,.35)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 32, 32);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* --- galaxia espiral --- */
+  let galaxia;
+  (function galaxiaEspiral() {
+    const N = 9000, brazos = 4;
     const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const r = R * (.5 + .5 * Math.random()), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
-      pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.cos(p); pos[i*3+2] = r * Math.sin(p) * Math.sin(t);
-      const c = colores[Math.floor(Math.random() * colores.length)].clone()
-        .multiplyScalar(brillo * (.6 + .4 * Math.random()));
+    const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    const paleta = [new THREE.Color("#cfd8ff"), new THREE.Color("#ffffff"), new THREE.Color("#ffe3f2"), new THREE.Color("#b8c6ff")];
+    for (let i = 0; i < N; i++) {
+      const brazo = i % brazos;
+      const r = 60 + Math.pow(Math.random(), 1.6) * 620;
+      const ang = (brazo / brazos) * Math.PI * 2 + r * 0.0075 + (Math.random() - .5) * .55;
+      const disp = (Math.random() - .5) * (36 + r * .07);
+      pos[i*3]   = Math.cos(ang) * r + disp * (Math.random() - .5);
+      pos[i*3+1] = (Math.random() - .5) * (18 + r * .05);
+      pos[i*3+2] = Math.sin(ang) * r + disp * (Math.random() - .5);
+      const c = paleta[Math.floor(Math.random() * paleta.length)].clone();
+      c.multiplyScalar(.55 + Math.random() * .45);
       col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
     }
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    const p = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: tam, map: texturaEstrella(), vertexColors: true, transparent: true,
-      depthWrite: false, blending: THREE.AdditiveBlending,
-      // claves para que SÍ se vean: tamaño fijo en píxeles (si no, a esa
-      // distancia el motor las encoge a menos de un píxel) y sin niebla
-      sizeAttenuation: false, fog: false
-    }));
-    scene.add(p);
-    return p;
-  };
-  const paleta = [new THREE.Color("#aabfff"), new THREE.Color("#ffffff"),
-                  new THREE.Color("#fff4e8"), new THREE.Color("#ffd9a8")];
-  capa(6500, 3200, 1.8, paleta, .8);                       // fondo denso
-  capa(1800, 2400, 2.6, paleta, .9);                       // capa media
-  estrellasBrillantes = capa(750, 2800, 3.8, paleta, 1);   // brillantes, titilan
-})();
-
-/* --- corazón central de partículas --- */
-const corazonGrupo = new THREE.Group();
-(function corazonParticulas() {
-  const N = 900;
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const t = Math.random() * Math.PI * 2;
-    // corazón grande: rodea a la cámara en vez de quedar detrás de ella
-    const esc = 4.4 * (0.75 + Math.random() * 0.3);
-    const x = 16 * Math.pow(Math.sin(t), 3);
-    const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-    pos[i*3] = x * esc + (Math.random() - .5) * 7;
-    pos[i*3+1] = y * esc + (Math.random() - .5) * 7;
-    pos[i*3+2] = (Math.random() - .5) * 30;
-  }
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({
-    size: 4.5, map: texturaCorazon(), color: 0xff4fa0, transparent: true,
-    depthWrite: false, blending: THREE.AdditiveBlending
-  });
-  corazonGrupo.add(new THREE.Points(geo, mat));
-})();
-scene.add(corazonGrupo);
-
-/* ============================================================
-   📸 CÁMARA 3D en el centro, dentro del corazón
-   ============================================================ */
-let camaraModelo = null;
-(function cargarCamara() {
-  if (!THREE.GLTFLoader) return;
-  // los modelos con materiales necesitan luz (todo lo demás brilla solo)
-  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-  const luzRosa = new THREE.PointLight(0xff8fd0, 1.4, 400);
-  luzRosa.position.set(60, 80, 60);
-  scene.add(luzRosa);
-  const luzFria = new THREE.PointLight(0xaabfff, .8, 400);
-  luzFria.position.set(-70, -40, -60);
-  scene.add(luzFria);
-
-  new THREE.GLTFLoader().load("camara.glb", g => {
-    const obj = g.scene;
-    // centrarla y escalarla a un tamaño fijo, mida lo que mida el archivo
-    const caja = new THREE.Box3().setFromObject(obj);
-    const centro = caja.getCenter(new THREE.Vector3());
-    const tam = caja.getSize(new THREE.Vector3());
-    const escala = 52 / Math.max(tam.x, tam.y, tam.z);
-    obj.position.sub(centro.multiplyScalar(1));
-    obj.scale.setScalar(escala);
-
-    camaraModelo = new THREE.Group();
-    camaraModelo.add(obj);
-    obj.position.multiplyScalar(escala);
-    camaraModelo.position.set(0, 0, 0);
-    camaraModelo.renderOrder = 998;
-    scene.add(camaraModelo);
-  }, undefined, e => console.warn("No se pudo cargar la cámara 3D:", e));
-})();
-
-/* --- halo central --- */
-function texturaHalo(t = "255,120,215", m = "160,80,255") {
-  const c = document.createElement("canvas"); c.width = c.height = 512;
-  const x = c.getContext("2d");
-  const g = x.createRadialGradient(256, 256, 20, 256, 256, 250);
-  g.addColorStop(0, `rgba(${t},.5)`); g.addColorStop(.5, `rgba(${m},.16)`); g.addColorStop(1, "rgba(0,0,0,0)");
-  x.fillStyle = g; x.fillRect(0, 0, 512, 512);
-  return new THREE.CanvasTexture(c);
-}
-const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaHalo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-halo.scale.set(300, 300, 1);
-halo.position.z = -70;      // detrás de la cámara: su brillo ya no la tapa
-scene.add(halo);
-
-/* nebulosas lejanas de color, para que el espacio no se sienta vacío */
-[
-  { c1: "150,110,255", c2: "80,40,180",  x: -1400, y: 350,  z: -1600, s: 1600, op: .16 },
-  { c1: "90,140,255",  c2: "40,70,200",  x: 1500,  y: -250, z: -1300, s: 1400, op: .13 },
-  { c1: "255,120,200", c2: "180,60,160", x: 300,   y: 500,  z: 1700,  s: 1500, op: .12 }
-].forEach(n => {
-  const neb = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: texturaHalo(n.c1, n.c2), transparent: true, opacity: n.op,
-    depthWrite: false, blending: THREE.AdditiveBlending, fog: false
-  }));
-  neb.position.set(n.x, n.y, n.z);
-  neb.scale.set(n.s, n.s, 1);
-  scene.add(neb);
-});
-
-/* --- texto central --- */
-/* Dibuja el texto en un lienzo que se ajusta a lo que mide la frase,
-   así no se corta por larga que sea. Devuelve también la proporción,
-   para poder estirar el sprite igual y que no salga deformado. */
-function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
-  const fuente = `bold ${fs}px 'Segoe UI', Arial`;
-  const medidor = document.createElement("canvas").getContext("2d");
-  medidor.font = fuente;
-  // margen amplio: el brillo se sale del texto y Safari mide de menos los emojis
-  const ancho = Math.ceil(medidor.measureText(txt).width) + fs * 2.2;
-  const alto = Math.ceil(fs * 2);
-
-  // El lienzo se lleva a medidas "potencia de dos" (256, 512, 1024…).
-  // Es lo único que algunos equipos como el iPad aceptan sin reescalar
-  // por su cuenta, que era lo que descentraba y cortaba el texto.
-  const pot2 = n => { let p = 64; while (p < n) p *= 2; return p; };
-  const c = document.createElement("canvas");
-  c.width = pot2(Math.max(w || 0, ancho));
-  c.height = pot2(Math.max(h || 0, alto));
-  const x = c.getContext("2d");
-  x.font = fuente;
-  // El centrado se calcula a mano en vez de confiar en textAlign:
-  // Safari en iPad lo ignoraba y el texto salía corrido a la derecha
-  // (se veía "TE" bajo el corazón y "AMO" de lado).
-  x.textAlign = "left";
-  x.textBaseline = "middle";
-  const anchoReal = x.measureText(txt).width;
-  const px = Math.round((c.width - anchoReal) / 2);
-  const py = Math.round(c.height / 2);
-
-  x.fillStyle = color; x.shadowColor = glow; x.shadowBlur = 45;
-  x.fillText(txt, px, py);
-  x.shadowBlur = 18; x.fillText(txt, px, py);
-
-  const tex = new THREE.CanvasTexture(c);
-  // Sin esto, en iPad y otros equipos el motor reescala la textura a
-  // medidas "potencia de dos" y recorta el texto (el famoso "TE AM").
-  tex.generateMipmaps = false;
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  tex.proporcion = c.width / c.height;      // ancho ÷ alto
-  return tex;
-}
-/* el TE AMO va abajo de la cámara, para no asomarse detrás de ella */
-const texCentro = texturaTexto(CONFIG.mensajeCentral, 90);
-const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texCentro, transparent: true, depthWrite: false }));
-const altoCentro = 32;
-textoCentro.scale.set(altoCentro * (texCentro.proporcion || 4), altoCentro, 1);
-textoCentro.position.y = 58; textoCentro.renderOrder = 999;   // arriba del corazón
-scene.add(textoCentro);
-
-/* ============================================================
-   📸 ANILLO DE FOTOS (subidas desde /admin)
-   ============================================================ */
-const grupoFotos = new THREE.Group();
-scene.add(grupoFotos);
-
-function texturaPolaroid(url) {
-  return new Promise(res => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const S = 256, b = 14, r = 18;
-      const c = document.createElement("canvas"); c.width = c.height = S;
-      const x = c.getContext("2d");
-      function rrect(x0, y0, w, h, rad) {
-        x.beginPath();
-        x.moveTo(x0 + rad, y0);
-        x.arcTo(x0 + w, y0, x0 + w, y0 + h, rad);
-        x.arcTo(x0 + w, y0 + h, x0, y0 + h, rad);
-        x.arcTo(x0, y0 + h, x0, y0, rad);
-        x.arcTo(x0, y0, x0 + w, y0, rad);
-        x.closePath();
-      }
-      x.shadowColor = "rgba(255,107,214,.9)"; x.shadowBlur = 10;
-      rrect(6, 6, S - 12, S - 12, r); x.fillStyle = "#fff"; x.fill();
-      x.shadowBlur = 0;
-      x.save();
-      rrect(6 + b, 6 + b, S - 12 - b * 2, S - 12 - b * 2, r - 8); x.clip();
-      const esc = Math.max((S - 12 - b*2) / img.width, (S - 12 - b*2) / img.height);
-      const w = img.width * esc, h = img.height * esc;
-      x.drawImage(img, 6 + b + (S - 12 - b*2 - w) / 2, 6 + b + (S - 12 - b*2 - h) / 2, w, h);
-      x.restore();
-      res(new THREE.CanvasTexture(c));
-    };
-    img.onerror = () => res(null);
-    img.src = url;
-  });
-}
-
-function alAzar(lista) {
-  const copia = lista.slice();
-  for (let i = copia.length - 1; i > 0; i--) {          // barajar
-    const j = Math.floor(Math.random() * (i + 1));
-    const t = copia[i]; copia[i] = copia[j]; copia[j] = t;
-  }
-  return copia;
-}
-
-/* ============================================================
-   ☀️ SISTEMA SOLAR DE FOTOS
-   Anillos concéntricos alrededor del TE AMO, cada uno lleno de
-   fotos que orbitan (los de adentro giran más rápido, como los
-   planetas). Se cargan por tandas para no congelar la pantalla.
-   ============================================================ */
-/* ============================================================
-   🌌 GALAXIA ESPIRAL DE FOTOS
-   Las fotos forman 4 brazos que se enroscan alrededor del TE AMO,
-   igual que las estrellas del fondo. Todas giran juntas, así los
-   brazos no se deforman con el tiempo.
-   ============================================================ */
-/* Suelta de memoria las fotos de la galaxia. En el iPad, tener cientos de
-   imágenes cargadas mientras se ve una película satura la memoria y iOS
-   cierra la pestaña (por eso las sacaba de la película). */
-let galaxiaCargada = false;
-function liberarFotosGalaxia() {
-  if (!galaxiaCargada) return;
-  grupoFotos.children.slice().forEach(sp => {
-    if (sp.material) {
-      if (sp.material.map) sp.material.map.dispose();
-      sp.material.dispose();
-    }
-    grupoFotos.remove(sp);
-  });
-  if (renderer && renderer.renderLists) renderer.renderLists.dispose();
-  galaxiaCargada = false;
-}
-
-async function crearGalaxiaDeFotos() {
-  if (!FOTOS.length || galaxiaCargada) return;
-  galaxiaCargada = true;
-  const urls = alAzar(FOTOS);
-  const total = urls.length;
-
-  const BRAZOS = 4;
-  const R_MIN = 145, R_MAX = 660;
-  const ENROSQUE = 0.0075;                 // el mismo giro que las estrellas del fondo
-  const VEL = 0.0011;                      // todas iguales: la galaxia gira entera
-
-  const LOTE = 30;
-  let idx = 0;
-  for (let ini = 0; ini < total; ini += LOTE) {
-    const texturas = await Promise.all(urls.slice(ini, ini + LOTE).map(texturaPolaroid));
-    texturas.forEach(tex => {
-      if (!tex) return;
-      const i = idx++;
-      const brazo = i % BRAZOS;
-      const f = i / total;                                   // avance a lo largo del brazo
-      const r = R_MIN + f * (R_MAX - R_MIN) + (Math.random() - .5) * 34;
-      const ang = (brazo / BRAZOS) * Math.PI * 2 + r * ENROSQUE + (Math.random() - .5) * .3;
-
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-      const s = 15 + Math.random() * 9;
-      sp.scale.set(s, s, 1);
-      sp.userData = {
-        ang, r, vel: VEL,
-        y0: (Math.random() - .5) * (14 + f * 26),            // el disco engorda hacia afuera
-        fase: Math.random() * Math.PI * 2
-      };
-      sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
-      grupoFotos.add(sp);
+    const mat = new THREE.PointsMaterial({
+      size: 1.8, map: texturaEstrella(), vertexColors: true, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending
     });
-    if (!galaxiaCargada) return;      // salieron de la galaxia a media carga
+    galaxia = new THREE.Points(geo, mat);
+    scene.add(galaxia);
+  })();
+
+  /* --- cielo estrellado en dos capas, como el de verdad ---
+     miles de estrellas débiles al fondo y unas cuantas brillantes que
+     titilan; con colores reales (blanco azulado, blanco, ámbar) --- */
+  let estrellasBrillantes = null;
+  (function cielo() {
+    const capa = (n, R, tam, colores, brillo) => {
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const r = R * (.5 + .5 * Math.random()), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+        pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.cos(p); pos[i*3+2] = r * Math.sin(p) * Math.sin(t);
+        const c = colores[Math.floor(Math.random() * colores.length)].clone()
+          .multiplyScalar(brillo * (.6 + .4 * Math.random()));
+        col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      const p = new THREE.Points(geo, new THREE.PointsMaterial({
+        size: tam, map: texturaEstrella(), vertexColors: true, transparent: true,
+        depthWrite: false, blending: THREE.AdditiveBlending,
+        // claves para que SÍ se vean: tamaño fijo en píxeles (si no, a esa
+        // distancia el motor las encoge a menos de un píxel) y sin niebla
+        sizeAttenuation: false, fog: false
+      }));
+      scene.add(p);
+      return p;
+    };
+    const paleta = [new THREE.Color("#aabfff"), new THREE.Color("#ffffff"),
+                    new THREE.Color("#fff4e8"), new THREE.Color("#ffd9a8")];
+    capa(6500, 3200, 1.8, paleta, .8);                       // fondo denso
+    capa(1800, 2400, 2.6, paleta, .9);                       // capa media
+    estrellasBrillantes = capa(750, 2800, 3.8, paleta, 1);   // brillantes, titilan
+  })();
+
+  /* --- corazón central de partículas --- */
+  const corazonGrupo = new THREE.Group();
+  (function corazonParticulas() {
+    const N = 900;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const t = Math.random() * Math.PI * 2;
+      // corazón grande: rodea a la cámara en vez de quedar detrás de ella
+      const esc = 4.4 * (0.75 + Math.random() * 0.3);
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+      pos[i*3] = x * esc + (Math.random() - .5) * 7;
+      pos[i*3+1] = y * esc + (Math.random() - .5) * 7;
+      pos[i*3+2] = (Math.random() - .5) * 30;
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({
+      size: 4.5, map: texturaCorazon(), color: 0xff4fa0, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    corazonGrupo.add(new THREE.Points(geo, mat));
+  })();
+  scene.add(corazonGrupo);
+
+  /* ============================================================
+     📸 CÁMARA 3D en el centro, dentro del corazón
+     ============================================================ */
+  let camaraModelo = null;
+  (function cargarCamara() {
+    if (!THREE.GLTFLoader) return;
+    // los modelos con materiales necesitan luz (todo lo demás brilla solo)
+    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+    const luzRosa = new THREE.PointLight(0xff8fd0, 1.4, 400);
+    luzRosa.position.set(60, 80, 60);
+    scene.add(luzRosa);
+    const luzFria = new THREE.PointLight(0xaabfff, .8, 400);
+    luzFria.position.set(-70, -40, -60);
+    scene.add(luzFria);
+
+    new THREE.GLTFLoader().load("camara.glb", g => {
+      const obj = g.scene;
+      // centrarla y escalarla a un tamaño fijo, mida lo que mida el archivo
+      const caja = new THREE.Box3().setFromObject(obj);
+      const centro = caja.getCenter(new THREE.Vector3());
+      const tam = caja.getSize(new THREE.Vector3());
+      const escala = 52 / Math.max(tam.x, tam.y, tam.z);
+      obj.position.sub(centro.multiplyScalar(1));
+      obj.scale.setScalar(escala);
+
+      camaraModelo = new THREE.Group();
+      camaraModelo.add(obj);
+      obj.position.multiplyScalar(escala);
+      camaraModelo.position.set(0, 0, 0);
+      camaraModelo.renderOrder = 998;
+      scene.add(camaraModelo);
+    }, undefined, e => console.warn("No se pudo cargar la cámara 3D:", e));
+  })();
+
+  /* --- halo central --- */
+  function texturaHalo(t = "255,120,215", m = "160,80,255") {
+    const c = document.createElement("canvas"); c.width = c.height = 512;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(256, 256, 20, 256, 256, 250);
+    g.addColorStop(0, `rgba(${t},.5)`); g.addColorStop(.5, `rgba(${m},.16)`); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+    return new THREE.CanvasTexture(c);
   }
-}
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaHalo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.set(300, 300, 1);
+  halo.position.z = -70;      // detrás de la cámara: su brillo ya no la tapa
+  scene.add(halo);
 
-/* --- frases orbitando (se reducen si hay fotos) --- */
-const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
-const grupoFrases = new THREE.Group();
-scene.add(grupoFrases);
-/* las palabras que orbitan se editan desde el panel; si la lista se deja
-   vacía, simplemente no hay palabras */
-const FRASES = [];
-const listaFrases = Array.isArray(CONFIG.frases) ? CONFIG.frases : [];
-const copias = FOTOS.length ? 1 : 4;
-for (let v = 0; v < copias && listaFrases.length; v++) FRASES.push(...listaFrases);
-FRASES.forEach((f, i) => {
-  const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length]);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  const alto = 11;                                   // el sprite se estira según lo larga que sea
-  sp.scale.set(alto * (tex.proporcion || 4.7), alto, 1);
-  const phi = Math.acos(2 * Math.random() - 1), theta = Math.random() * Math.PI * 2, r = 165 + Math.random() * 150;
-  sp.position.setFromSphericalCoords(r, phi, theta);
-  sp.userData = { phi, theta, r, vel: .0008 + Math.random() * .0012, fase: Math.random() * Math.PI * 2 };
-  grupoFrases.add(sp);
-});
-
-/* --- estrellas fugaces --- */
-const fugaces = [];
-function lanzarFugaz() {
-  const geo = new THREE.BufferGeometry();
-  const n = 28, pos = new Float32Array(n * 3);
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({ size: 6, map: texturaBrillo(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const p = new THREE.Points(geo, mat);
-  // cruzan más cerca y más planas, para que sí se vean pasar
-  const inicio = new THREE.Vector3((Math.random()-.5)*1800, 200 + Math.random()*380, (Math.random()-.5)*1400);
-  const dir = new THREE.Vector3((Math.random() < .5 ? 1 : -1) * (1.4 + Math.random()), -(.3 + Math.random()*.5), (Math.random()-.5)*1.2).normalize();
-  p.userData = { inicio, dir, t: 0 };
-  scene.add(p); fugaces.push(p);
-}
-setInterval(() => { if (fugaces.length < 6) lanzarFugaz(); }, 1500);
-
-/* --- controles --- */
-let arrastrando = false, lx = 0, ly = 0, seMovio = false;
-function abajo(e){ arrastrando = true; seMovio = false; const t = e.touches ? e.touches[0] : e; lx = t.clientX; ly = t.clientY; }
-function mueve(e){
-  if (!arrastrando) return;
-  const t = e.touches ? e.touches[0] : e;
-  const dx = (t.clientX - lx) / innerWidth, dy = (t.clientY - ly) / innerHeight;
-  if (Math.abs(dx) + Math.abs(dy) > .004) seMovio = true;
-  rotY -= dx * 3.2; rotX = Math.max(-1.25, Math.min(1.25, rotX - dy * 2.4));
-  lx = t.clientX; ly = t.clientY;
-}
-function arriba(e){
-  if (arrastrando && !seMovio && e.target === canvas) {
-    const t = (e.changedTouches ? e.changedTouches[0] : e);
-    ráfagaCorazones(t.clientX, t.clientY, 7);
-  }
-  arrastrando = false;
-}
-addEventListener("mousedown", abajo); addEventListener("mousemove", mueve); addEventListener("mouseup", arriba);
-addEventListener("touchstart", abajo, { passive: true }); addEventListener("touchmove", mueve, { passive: true }); addEventListener("touchend", arriba, { passive: true });
-addEventListener("wheel", e => { targetDist += e.deltaY * .3; targetDist = Math.max(180, Math.min(1600, targetDist)); }, { passive: true });
-let pellizco = 0;
-addEventListener("touchmove", e => {
-  if (e.touches && e.touches.length === 2) {
-    e.preventDefault();
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    if (pellizco) { targetDist += (pellizco - d) * .6; targetDist = Math.max(180, Math.min(1600, targetDist)); }
-    pellizco = d;
-  }
-}, { passive: false });
-addEventListener("touchend", () => { pellizco = 0; }, { passive: true });
-
-addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-/* --- bucle de animación --- */
-let t = 0;
-(function anima() {
-  requestAnimationFrame(anima);
-  // si la galaxia no está a la vista, no hay nada que dibujar (ahorra batería)
-  if (!document.body.classList.contains("iniciado")) return;
-  t += .01;
-
-  if (galaxia) galaxia.rotation.y += .0006;
-  // titileo sutil de las estrellas brillantes
-  if (estrellasBrillantes) estrellasBrillantes.material.opacity = .75 + .25 * Math.sin(t * 2.1);
-
-  const lat = 1 + .09 * Math.pow(Math.abs(Math.sin(t * 2.4)), 3);
-  corazonGrupo.scale.set(lat, lat, lat);
-  corazonGrupo.rotation.y = Math.sin(t * .4) * .35;
-
-  if (camaraModelo) {                       // la cámara gira y flota suavecito
-    camaraModelo.rotation.y += .006;
-    camaraModelo.position.y = Math.sin(t * 1.1) * 4;
-  }
-
-  halo.scale.set(300 * (1 + .04 * Math.sin(t * .8)), 300 * (1 + .04 * Math.sin(t * .8)), 1);
-  textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
-
-  grupoFotos.children.forEach(sp => {
-    const u = sp.userData;
-    u.ang += u.vel;
-    sp.position.set(Math.cos(u.ang) * u.r, u.y0 + Math.sin(t * 1.2 + u.fase) * 6, Math.sin(u.ang) * u.r);
+  /* nebulosas lejanas de color, para que el espacio no se sienta vacío */
+  [
+    { c1: "150,110,255", c2: "80,40,180",  x: -1400, y: 350,  z: -1600, s: 1600, op: .16 },
+    { c1: "90,140,255",  c2: "40,70,200",  x: 1500,  y: -250, z: -1300, s: 1400, op: .13 },
+    { c1: "255,120,200", c2: "180,60,160", x: 300,   y: 500,  z: 1700,  s: 1500, op: .12 }
+  ].forEach(n => {
+    const neb = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: texturaHalo(n.c1, n.c2), transparent: true, opacity: n.op,
+      depthWrite: false, blending: THREE.AdditiveBlending, fog: false
+    }));
+    neb.position.set(n.x, n.y, n.z);
+    neb.scale.set(n.s, n.s, 1);
+    scene.add(neb);
   });
 
-  grupoFrases.children.forEach(sp => {
-    const u = sp.userData;
-    u.theta += u.vel;
-    sp.position.setFromSphericalCoords(u.r + Math.sin(t + u.fase) * 6, u.phi, u.theta);
-    sp.material.opacity = .65 + .35 * Math.sin(t * 1.6 + u.fase);
-  });
+  /* --- texto central --- */
+  /* Dibuja el texto en un lienzo que se ajusta a lo que mide la frase,
+     así no se corta por larga que sea. Devuelve también la proporción,
+     para poder estirar el sprite igual y que no salga deformado. */
+  function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
+    const fuente = `bold ${fs}px 'Segoe UI', Arial`;
+    const medidor = document.createElement("canvas").getContext("2d");
+    medidor.font = fuente;
+    // margen amplio: el brillo se sale del texto y Safari mide de menos los emojis
+    const ancho = Math.ceil(medidor.measureText(txt).width) + fs * 2.2;
+    const alto = Math.ceil(fs * 2);
 
-  for (let i = fugaces.length - 1; i >= 0; i--) {
-    const f = fugaces[i]; f.userData.t += 1;
-    const pos = f.geometry.attributes.position.array;
-    for (let j = 27; j > 0; j--) { pos[j*3] = pos[(j-1)*3]; pos[j*3+1] = pos[(j-1)*3+1]; pos[j*3+2] = pos[(j-1)*3+2]; }
-    const head = f.userData.inicio.clone().addScaledVector(f.userData.dir, f.userData.t * 14);
-    pos[0] = head.x; pos[1] = head.y; pos[2] = head.z;
-    f.geometry.attributes.position.needsUpdate = true;
-    f.material.opacity = Math.max(0, 1 - f.userData.t / 110);
-    if (f.userData.t > 120) { scene.remove(f); fugaces.splice(i, 1); }
+    // El lienzo se lleva a medidas "potencia de dos" (256, 512, 1024…).
+    // Es lo único que algunos equipos como el iPad aceptan sin reescalar
+    // por su cuenta, que era lo que descentraba y cortaba el texto.
+    const pot2 = n => { let p = 64; while (p < n) p *= 2; return p; };
+    const c = document.createElement("canvas");
+    c.width = pot2(Math.max(w || 0, ancho));
+    c.height = pot2(Math.max(h || 0, alto));
+    const x = c.getContext("2d");
+    x.font = fuente;
+    // El centrado se calcula a mano en vez de confiar en textAlign:
+    // Safari en iPad lo ignoraba y el texto salía corrido a la derecha
+    // (se veía "TE" bajo el corazón y "AMO" de lado).
+    x.textAlign = "left";
+    x.textBaseline = "middle";
+    const anchoReal = x.measureText(txt).width;
+    const px = Math.round((c.width - anchoReal) / 2);
+    const py = Math.round(c.height / 2);
+
+    x.fillStyle = color; x.shadowColor = glow; x.shadowBlur = 45;
+    x.fillText(txt, px, py);
+    x.shadowBlur = 18; x.fillText(txt, px, py);
+
+    const tex = new THREE.CanvasTexture(c);
+    // Sin esto, en iPad y otros equipos el motor reescala la textura a
+    // medidas "potencia de dos" y recorta el texto (el famoso "TE AM").
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.proporcion = c.width / c.height;      // ancho ÷ alto
+    return tex;
+  }
+  /* el TE AMO va abajo de la cámara, para no asomarse detrás de ella */
+  const texCentro = texturaTexto(CONFIG.mensajeCentral, 90);
+  const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texCentro, transparent: true, depthWrite: false }));
+  const altoCentro = 32;
+  textoCentro.scale.set(altoCentro * (texCentro.proporcion || 4), altoCentro, 1);
+  textoCentro.position.y = 58; textoCentro.renderOrder = 999;   // arriba del corazón
+  scene.add(textoCentro);
+
+  /* ============================================================
+     📸 ANILLO DE FOTOS (subidas desde /admin)
+     ============================================================ */
+  const grupoFotos = new THREE.Group();
+  scene.add(grupoFotos);
+
+  function texturaPolaroid(url) {
+    return new Promise(res => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const S = 256, b = 14, r = 18;
+        const c = document.createElement("canvas"); c.width = c.height = S;
+        const x = c.getContext("2d");
+        function rrect(x0, y0, w, h, rad) {
+          x.beginPath();
+          x.moveTo(x0 + rad, y0);
+          x.arcTo(x0 + w, y0, x0 + w, y0 + h, rad);
+          x.arcTo(x0 + w, y0 + h, x0, y0 + h, rad);
+          x.arcTo(x0, y0 + h, x0, y0, rad);
+          x.arcTo(x0, y0, x0 + w, y0, rad);
+          x.closePath();
+        }
+        x.shadowColor = "rgba(255,107,214,.9)"; x.shadowBlur = 10;
+        rrect(6, 6, S - 12, S - 12, r); x.fillStyle = "#fff"; x.fill();
+        x.shadowBlur = 0;
+        x.save();
+        rrect(6 + b, 6 + b, S - 12 - b * 2, S - 12 - b * 2, r - 8); x.clip();
+        const esc = Math.max((S - 12 - b*2) / img.width, (S - 12 - b*2) / img.height);
+        const w = img.width * esc, h = img.height * esc;
+        x.drawImage(img, 6 + b + (S - 12 - b*2 - w) / 2, 6 + b + (S - 12 - b*2 - h) / 2, w, h);
+        x.restore();
+        res(new THREE.CanvasTexture(c));
+      };
+      img.onerror = () => res(null);
+      img.src = url;
+    });
   }
 
-  currentDist += (targetDist - currentDist) * .06;
-  const cx = Math.cos(rotX), sx = Math.sin(rotX), cy = Math.cos(rotY), sy = Math.sin(rotY);
-  camera.position.set(currentDist * sy * cx, currentDist * sx, currentDist * cy * cx);
-  camera.lookAt(0, 0, 0);
-  renderer.render(scene, camera);
-})();
+  function alAzar(lista) {
+    const copia = lista.slice();
+    for (let i = copia.length - 1; i > 0; i--) {          // barajar
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = copia[i]; copia[i] = copia[j]; copia[j] = t;
+    }
+    return copia;
+  }
+
+  /* ============================================================
+     ☀️ SISTEMA SOLAR DE FOTOS
+     Anillos concéntricos alrededor del TE AMO, cada uno lleno de
+     fotos que orbitan (los de adentro giran más rápido, como los
+     planetas). Se cargan por tandas para no congelar la pantalla.
+     ============================================================ */
+  /* ============================================================
+     🌌 GALAXIA ESPIRAL DE FOTOS
+     Las fotos forman 4 brazos que se enroscan alrededor del TE AMO,
+     igual que las estrellas del fondo. Todas giran juntas, así los
+     brazos no se deforman con el tiempo.
+     ============================================================ */
+  /* Suelta de memoria las fotos de la galaxia. En el iPad, tener cientos de
+     imágenes cargadas mientras se ve una película satura la memoria y iOS
+     cierra la pestaña (por eso las sacaba de la película). */
+  let galaxiaCargada = false;
+  function liberarFotosGalaxia() {
+    if (!galaxiaCargada) return;
+    grupoFotos.children.slice().forEach(sp => {
+      if (sp.material) {
+        if (sp.material.map) sp.material.map.dispose();
+        sp.material.dispose();
+      }
+      grupoFotos.remove(sp);
+    });
+    if (renderer && renderer.renderLists) renderer.renderLists.dispose();
+    galaxiaCargada = false;
+  }
+
+  async function crearGalaxiaDeFotos() {
+    if (!FOTOS.length || galaxiaCargada) return;
+    galaxiaCargada = true;
+    const urls = alAzar(FOTOS);
+    const total = urls.length;
+
+    const BRAZOS = 4;
+    const R_MIN = 145, R_MAX = 660;
+    const ENROSQUE = 0.0075;                 // el mismo giro que las estrellas del fondo
+    const VEL = 0.0011;                      // todas iguales: la galaxia gira entera
+
+    const LOTE = 30;
+    let idx = 0;
+    for (let ini = 0; ini < total; ini += LOTE) {
+      const texturas = await Promise.all(urls.slice(ini, ini + LOTE).map(texturaPolaroid));
+      texturas.forEach(tex => {
+        if (!tex) return;
+        const i = idx++;
+        const brazo = i % BRAZOS;
+        const f = i / total;                                   // avance a lo largo del brazo
+        const r = R_MIN + f * (R_MAX - R_MIN) + (Math.random() - .5) * 34;
+        const ang = (brazo / BRAZOS) * Math.PI * 2 + r * ENROSQUE + (Math.random() - .5) * .3;
+
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+        const s = 15 + Math.random() * 9;
+        sp.scale.set(s, s, 1);
+        sp.userData = {
+          ang, r, vel: VEL,
+          y0: (Math.random() - .5) * (14 + f * 26),            // el disco engorda hacia afuera
+          fase: Math.random() * Math.PI * 2
+        };
+        sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
+        grupoFotos.add(sp);
+      });
+      if (!galaxiaCargada) return;      // salieron de la galaxia a media carga
+    }
+  }
+
+  /* --- frases orbitando (se reducen si hay fotos) --- */
+  const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
+  const grupoFrases = new THREE.Group();
+  scene.add(grupoFrases);
+  /* las palabras que orbitan se editan desde el panel; si la lista se deja
+     vacía, simplemente no hay palabras */
+  const FRASES = [];
+  const listaFrases = Array.isArray(CONFIG.frases) ? CONFIG.frases : [];
+  const copias = FOTOS.length ? 1 : 4;
+  for (let v = 0; v < copias && listaFrases.length; v++) FRASES.push(...listaFrases);
+  FRASES.forEach((f, i) => {
+    const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length]);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    const alto = 11;                                   // el sprite se estira según lo larga que sea
+    sp.scale.set(alto * (tex.proporcion || 4.7), alto, 1);
+    const phi = Math.acos(2 * Math.random() - 1), theta = Math.random() * Math.PI * 2, r = 165 + Math.random() * 150;
+    sp.position.setFromSphericalCoords(r, phi, theta);
+    sp.userData = { phi, theta, r, vel: .0008 + Math.random() * .0012, fase: Math.random() * Math.PI * 2 };
+    grupoFrases.add(sp);
+  });
+
+  /* --- estrellas fugaces --- */
+  const fugaces = [];
+  function lanzarFugaz() {
+    const geo = new THREE.BufferGeometry();
+    const n = 28, pos = new Float32Array(n * 3);
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ size: 6, map: texturaBrillo(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const p = new THREE.Points(geo, mat);
+    // cruzan más cerca y más planas, para que sí se vean pasar
+    const inicio = new THREE.Vector3((Math.random()-.5)*1800, 200 + Math.random()*380, (Math.random()-.5)*1400);
+    const dir = new THREE.Vector3((Math.random() < .5 ? 1 : -1) * (1.4 + Math.random()), -(.3 + Math.random()*.5), (Math.random()-.5)*1.2).normalize();
+    p.userData = { inicio, dir, t: 0 };
+    scene.add(p); fugaces.push(p);
+  }
+  setInterval(() => { if (fugaces.length < 6) lanzarFugaz(); }, 1500);
+
+  /* --- controles --- */
+  let arrastrando = false, lx = 0, ly = 0, seMovio = false;
+  function abajo(e){ arrastrando = true; seMovio = false; const t = e.touches ? e.touches[0] : e; lx = t.clientX; ly = t.clientY; }
+  function mueve(e){
+    if (!arrastrando) return;
+    const t = e.touches ? e.touches[0] : e;
+    const dx = (t.clientX - lx) / innerWidth, dy = (t.clientY - ly) / innerHeight;
+    if (Math.abs(dx) + Math.abs(dy) > .004) seMovio = true;
+    rotY -= dx * 3.2; rotX = Math.max(-1.25, Math.min(1.25, rotX - dy * 2.4));
+    lx = t.clientX; ly = t.clientY;
+  }
+  function arriba(e){
+    if (arrastrando && !seMovio && e.target === canvas) {
+      const t = (e.changedTouches ? e.changedTouches[0] : e);
+      ráfagaCorazones(t.clientX, t.clientY, 7);
+    }
+    arrastrando = false;
+  }
+  // los controles se enganchan una sola vez: si no, al entrar y salir de la
+  // galaxia se irían acumulando y el giro se volvería cada vez más brusco
+  if (!window.__controlesGalaxia) {
+    window.__controlesGalaxia = true;
+  addEventListener("mousedown", abajo); addEventListener("mousemove", mueve); addEventListener("mouseup", arriba);
+  addEventListener("touchstart", abajo, { passive: true }); addEventListener("touchmove", mueve, { passive: true }); addEventListener("touchend", arriba, { passive: true });
+  addEventListener("wheel", e => { targetDist += e.deltaY * .3; targetDist = Math.max(180, Math.min(1600, targetDist)); }, { passive: true });
+  let pellizco = 0;
+  addEventListener("touchmove", e => {
+    if (e.touches && e.touches.length === 2) {
+      e.preventDefault();
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (pellizco) { targetDist += (pellizco - d) * .6; targetDist = Math.max(180, Math.min(1600, targetDist)); }
+      pellizco = d;
+    }
+  }, { passive: false });
+  addEventListener("touchend", () => { pellizco = 0; }, { passive: true });
+
+  addEventListener("resize", () => {
+    if (!escenaViva) return;
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+  }   /* fin de los controles que solo se enganchan una vez */
+
+  /* --- bucle de animación --- */
+  let t = 0;
+  crearGalaxiaDeFotos();        // empieza a poblar la galaxia por tandas
+
+  animando = true;
+  (function anima() {
+    if (!escenaViva) return;                 // la galaxia se desmontó
+    requestAnimationFrame(anima);
+    // si la galaxia no está a la vista, no hay nada que dibujar (ahorra batería)
+    if (!document.body.classList.contains("iniciado")) return;
+    t += .01;
+
+    if (galaxia) galaxia.rotation.y += .0006;
+    // titileo sutil de las estrellas brillantes
+    if (estrellasBrillantes) estrellasBrillantes.material.opacity = .75 + .25 * Math.sin(t * 2.1);
+
+    const lat = 1 + .09 * Math.pow(Math.abs(Math.sin(t * 2.4)), 3);
+    corazonGrupo.scale.set(lat, lat, lat);
+    corazonGrupo.rotation.y = Math.sin(t * .4) * .35;
+
+    if (camaraModelo) {                       // la cámara gira y flota suavecito
+      camaraModelo.rotation.y += .006;
+      camaraModelo.position.y = Math.sin(t * 1.1) * 4;
+    }
+
+    halo.scale.set(300 * (1 + .04 * Math.sin(t * .8)), 300 * (1 + .04 * Math.sin(t * .8)), 1);
+    textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
+
+    grupoFotos.children.forEach(sp => {
+      const u = sp.userData;
+      u.ang += u.vel;
+      sp.position.set(Math.cos(u.ang) * u.r, u.y0 + Math.sin(t * 1.2 + u.fase) * 6, Math.sin(u.ang) * u.r);
+    });
+
+    grupoFrases.children.forEach(sp => {
+      const u = sp.userData;
+      u.theta += u.vel;
+      sp.position.setFromSphericalCoords(u.r + Math.sin(t + u.fase) * 6, u.phi, u.theta);
+      sp.material.opacity = .65 + .35 * Math.sin(t * 1.6 + u.fase);
+    });
+
+    for (let i = fugaces.length - 1; i >= 0; i--) {
+      const f = fugaces[i]; f.userData.t += 1;
+      const pos = f.geometry.attributes.position.array;
+      for (let j = 27; j > 0; j--) { pos[j*3] = pos[(j-1)*3]; pos[j*3+1] = pos[(j-1)*3+1]; pos[j*3+2] = pos[(j-1)*3+2]; }
+      const head = f.userData.inicio.clone().addScaledVector(f.userData.dir, f.userData.t * 14);
+      pos[0] = head.x; pos[1] = head.y; pos[2] = head.z;
+      f.geometry.attributes.position.needsUpdate = true;
+      f.material.opacity = Math.max(0, 1 - f.userData.t / 110);
+      if (f.userData.t > 120) { scene.remove(f); fugaces.splice(i, 1); }
+    }
+
+    currentDist += (targetDist - currentDist) * .06;
+    const cx = Math.cos(rotX), sx = Math.sin(rotX), cy = Math.cos(rotY), sy = Math.sin(rotY);
+    camera.position.set(currentDist * sy * cx, currentDist * sx, currentDist * cy * cx);
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+  })();
+}
+
+function desmontarGalaxia() {
+  if (!escenaViva) return;
+  escenaViva = false;
+  animando = false;
+  try {
+    scene.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      const m = o.material;
+      if (m) (Array.isArray(m) ? m : [m]).forEach(x => {
+        if (x.map) x.map.dispose();
+        x.dispose();
+      });
+    });
+    renderer.dispose();
+    if (renderer.forceContextLoss) renderer.forceContextLoss();
+  } catch (e) {}
+  renderer = null; scene = null; camera = null;
+
+  // Un lienzo al que se le destruyó el contexto ya no sirve para uno nuevo:
+  // se cambia por uno limpio para que al volver a entrar la galaxia se vea.
+  const viejo = document.getElementById("c");
+  if (viejo) {
+    const nuevo = document.createElement("canvas");
+    nuevo.id = "c";
+    viejo.replaceWith(nuevo);
+  }
+}
+
 
 } /* fin iniciar() */
 </script>
