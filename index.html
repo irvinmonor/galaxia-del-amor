@@ -1562,10 +1562,45 @@ vid.addEventListener("progress", () => {
   }
 });
 vid.addEventListener("ended", () => { playerVideo.classList.add("pausado"); mostrarUI(); });
-vid.addEventListener("error", () => {
-  playerVideo.classList.remove("cargando");
-  document.getElementById("tituloReproduciendo").textContent = "No se pudo cargar el video 😢";
-});
+
+/* ============================================================
+   🔌 RECUPERACIÓN DE RED
+   Si el internet se corta un momento (WiFi que va y viene), el
+   video se atasca. En vez de mostrar error, reintenta solo desde
+   donde iba, sin que ella tenga que hacer nada.
+   ============================================================ */
+let reintentoRed = null;
+function recuperarVideo(motivo) {
+  if (!playerVideo.classList.contains("abierto") || playerVideo.classList.contains("incrustado")) return;
+  if (reintentoRed) return;                         // ya hay un reintento en curso
+  playerVideo.classList.add("cargando");
+  const desde = vid.currentTime || 0;
+  let intentos = 0;
+  reintentoRed = setInterval(() => {
+    intentos++;
+    if (vid.readyState >= 3 && !vid.error) {         // ya volvió a tener datos
+      clearInterval(reintentoRed); reintentoRed = null;
+      playerVideo.classList.remove("cargando");
+      if (!vid.paused) vid.play().catch(() => {});
+      return;
+    }
+    // recargar la fuente y saltar a donde iba
+    try {
+      const src = vid.currentSrc || vid.src;
+      if (src) {
+        vid.load();
+        const alListo = () => { try { vid.currentTime = desde; } catch (e) {} vid.play().catch(() => {}); };
+        vid.addEventListener("loadedmetadata", alListo, { once: true });
+      }
+    } catch (e) {}
+    if (intentos > 40) { clearInterval(reintentoRed); reintentoRed = null; }   // ~2 min intentando
+  }, 3000);
+}
+
+vid.addEventListener("stalled", () => recuperarVideo("stalled"));
+vid.addEventListener("error", () => recuperarVideo("error"));
+// cuando la conexión vuelve, se reintenta al instante
+addEventListener("online", () => { if (playerVideo.classList.contains("abierto")) recuperarVideo("online"); });
 
 function pintarTiempo() {
   const d = vid.duration || 0;
