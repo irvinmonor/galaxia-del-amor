@@ -1729,6 +1729,7 @@ function enfocarPrimera() {
 
 function entrarJeniflix(conAnimacion) {
   recordarPantalla("jeniflix");
+  pararMusica();                 // la canción es solo de la galaxia
   pintarVideos();
   document.getElementById("intro").classList.add("oculto");
   // OJO: no se deja ninguna película seleccionada al entrar. En la tele, el
@@ -1854,7 +1855,7 @@ document.getElementById("btnVistas").addEventListener("click", () => {
 
 /* --- salir de la galaxia y volver a la portada --- */
 document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
-  if (tocando) { audio.pause(); estadoPlay(false); }        // callar la música
+  pararMusica();                                            // callar la música
   modal.classList.remove("abierta");                        // cerrar la carta si estaba abierta
   clearInterval(escribiendo);
   burbuja.classList.remove("visible");                      // quitar la burbuja del gatito
@@ -1873,6 +1874,12 @@ document.getElementById("btnInicioGalaxia").addEventListener("click", () => {
    se reintenta con el siguiente toque en cualquier parte.
    ============================================================ */
 function musicaSonando() { return !audio.paused && !audio.muted; }
+function enLaGalaxia() { return document.body.classList.contains("iniciado"); }
+
+function pararMusica() {
+  try { audio.pause(); } catch (e) {}
+  estadoPlay(false);
+}
 
 function arrancarMusica(retraso) {
   if (!CONFIG.musicaActiva || !audio.src || musicaSonando()) return;
@@ -1888,10 +1895,12 @@ function arrancarMusica(retraso) {
   } catch (e) {}
 }
 
-/* red de seguridad: si por lo que sea no arrancó, el siguiente toque
-   o tecla en cualquier parte de la página la pone en marcha */
+/* Red de seguridad: si no arrancó, el siguiente toque la pone en marcha.
+   OJO: solo dentro de la galaxia — en la portada y en Jeniflix no debe sonar. */
 ["pointerdown", "keydown", "touchend"].forEach(ev =>
-  addEventListener(ev, () => { if (!musicaSonando()) arrancarMusica(0); }, { passive: true }));
+  addEventListener(ev, () => {
+    if (enLaGalaxia() && !musicaSonando()) arrancarMusica(0);
+  }, { passive: true }));
 
 /* --- cuadro sorpresa 🔒: la galaxia, con cuenta regresiva ---
    Se abre sola el 12 de agosto de 2026 a las 5:00 PM de Mazatlán
