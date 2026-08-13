@@ -711,8 +711,8 @@ body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
 
 <audio id="audio" loop></audio>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<!-- Three.js NO se carga al inicio: solo al entrar a la galaxia (ver más abajo
+     cargarThree). Así ver películas nunca toca el motor 3D ni gasta esa memoria. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script>
@@ -2208,8 +2208,30 @@ posiciones.forEach((pos, i) => {
 let escenaViva = false;
 let renderer = null, scene = null, camera = null, animando = false;
 
-function montarGalaxia() {
+/* Carga Three.js y el cargador de modelos SOLO la primera vez que se entra
+   a la galaxia. Antes venían en el <head> y pesaban ~600 KB que se cargaban
+   aunque uno solo quisiera ver películas. */
+let threePromesa = null;
+function cargarScriptUna(url) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = url; s.onload = ok; s.onerror = mal;
+    document.head.appendChild(s);
+  });
+}
+function cargarThree() {
+  if (window.THREE) return Promise.resolve();
+  if (!threePromesa) {
+    threePromesa = cargarScriptUna("https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js")
+      .then(() => cargarScriptUna("https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"));
+  }
+  return threePromesa;
+}
+
+async function montarGalaxia() {
   if (escenaViva) return;
+  await cargarThree();          // trae el motor 3D si aún no está
+  if (!window.THREE || !document.body.classList.contains("iniciado")) return;  // salieron mientras cargaba
   escenaViva = true;
 
   const canvas = document.getElementById("c");
