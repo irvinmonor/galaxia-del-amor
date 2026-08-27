@@ -1031,8 +1031,15 @@ async function revisarCambios(forzar) {
   if (netflixUI.classList.contains("abierta")) pintarVideos();
 }
 
-setInterval(() => { if (!document.hidden) revisarCambios(); }, 40000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) revisarCambios(); });
+/* Buscar cambios implica pedir datos y volver a dibujar la lista de películas.
+   Si eso ocurre a media película, en la tele se siente un tirón: por eso no se
+   revisa mientras se está viendo algo. */
+function viendoAlgo() {
+  const p = document.getElementById("playerVideo");
+  return !!p && p.classList.contains("abierto");
+}
+setInterval(() => { if (!document.hidden && !viendoAlgo()) revisarCambios(); }, 40000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !viendoAlgo()) revisarCambios(); });
 
 /* --- textos editables de Jeniflix --- */
 document.getElementById("flixTitulo").textContent = CONFIG.flixTitulo || DEFAULTS.flixTitulo;
@@ -1408,7 +1415,9 @@ function unirseALaSala() {
     });
     canalSala.on("broadcast", { event: "aviso" }, ({ payload }) => mostrarAvisoParty(payload || {}));
     // el panel avisa cuando guarda algo: así se ve al momento, sin recargar
-    canalSala.on("broadcast", { event: "refrescar" }, () => revisarCambios(true));
+    // si están viendo algo, el refresco espera: redibujar la lista a media
+    // película se siente como un tirón en la tele
+    canalSala.on("broadcast", { event: "refrescar" }, () => { if (!viendoAlgo()) revisarCambios(true); });
     // recarga completa a petición del panel (útil en la tele, donde recargar
     // a mano con el control es un fastidio)
     canalSala.on("broadcast", { event: "recargar" }, () => {
@@ -1588,15 +1597,26 @@ vid.addEventListener("waiting", () => playerVideo.classList.add("cargando"));
 vid.addEventListener("playing", () => playerVideo.classList.remove("cargando"));
 vid.addEventListener("canplay", () => playerVideo.classList.remove("cargando"));
 vid.addEventListener("loadedmetadata", () => { playerVideo.classList.remove("cargando"); pintarTiempo(); });
+/* "timeupdate" salta unas 4 veces por segundo. Todo lo que se haga aquí se
+   repite muchísimo, y en la Smart TV (que es lenta) eso le roba tiempo al
+   video y se ve como tironcitos. Por eso:
+   · guardar la posición se hace de verdad cada 5 s, no 4 veces seguidas
+   · si los controles están escondidos, no se repinta la barra de tiempo */
+let ultimoGuardado = 0;
 vid.addEventListener("timeupdate", () => {
-  pintarTiempo();
-  // guardar cada ~5 segundos por si cierra la pestaña de golpe
-  if (videoActual && Math.floor(vid.currentTime) % 5 === 0) guardarPosicion();
+  if (!playerVideo.classList.contains("ocultar-ui")) pintarTiempo();
+  if (!videoActual) return;
+  const ahora = vid.currentTime;
+  if (Math.abs(ahora - ultimoGuardado) >= 5) {
+    ultimoGuardado = ahora;
+    guardarPosicion();
+  }
 });
 vid.addEventListener("pause", guardarPosicion);
 addEventListener("beforeunload", guardarPosicion);
 addEventListener("visibilitychange", () => { if (document.hidden) guardarPosicion(); });
 vid.addEventListener("progress", () => {
+  if (playerVideo.classList.contains("ocultar-ui")) return;   // controles escondidos: no repintar
   if (vid.buffered.length && vid.duration) {
     bufferTiempo.style.width = (vid.buffered.end(vid.buffered.length - 1) / vid.duration * 100) + "%";
   }
@@ -2010,7 +2030,12 @@ function pintarEstadoSorpresa() {
   }
 }
 pintarEstadoSorpresa();
-setInterval(pintarEstadoSorpresa, 1000);
+// mientras se ve una película no hace falta repintar el conteo cada segundo:
+// en la Smart TV ese trabajo constante se notaba como tironcitos en el video
+setInterval(() => {
+  if (playerVideo.classList.contains("abierto")) return;
+  pintarEstadoSorpresa();
+}, 1000);
 
 tileSorpresa.addEventListener("click", () => {
   if (desbloqueadaParaMi()) {
