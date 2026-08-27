@@ -1847,6 +1847,41 @@ function abrirEditor(fila, v) {
     ? "Ahora es un link" + (v.embed ? " incrustado." : " directo.")
     : "Ahora es un archivo en Backblaze (" + pesoLegible(v.tam || 0) + ").";
 
+  /* mostrar a dónde apunta la película: se puede abrir para comprobar el .mp4
+     y copiar con un clic */
+  if (v.url) {
+    const caja = document.createElement("div");
+    caja.style.cssText = "margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap";
+
+    const enlace = document.createElement("a");
+    enlace.href = v.url;
+    enlace.target = "_blank";
+    enlace.rel = "noopener";
+    enlace.textContent = v.url;
+    enlace.title = "Abrir el video en una pestaña nueva";
+    enlace.style.cssText = "flex:1;min-width:220px;font-size:12px;color:#ff9ad5;word-break:break-all;text-decoration:underline";
+
+    const btnCopiar = document.createElement("button");
+    btnCopiar.className = "btn sec";
+    btnCopiar.type = "button";
+    btnCopiar.style.margin = "0";
+    btnCopiar.textContent = "📋 Copiar";
+    btnCopiar.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(v.url); } catch (e) {
+        const t = document.createElement("textarea");
+        t.value = v.url; document.body.appendChild(t); t.select();
+        try { document.execCommand("copy"); } catch (e2) {}
+        t.remove();
+      }
+      btnCopiar.textContent = "✅ Copiado";
+      setTimeout(() => { btnCopiar.textContent = "📋 Copiar"; }, 1500);
+    });
+
+    caja.appendChild(enlace);
+    caja.appendChild(btnCopiar);
+    estadoVid.appendChild(caja);
+  }
+
   zonaVid.addEventListener("click", () => fileVid.click());
   zonaVid.addEventListener("dragover", e => { e.preventDefault(); zonaVid.classList.add("encima"); });
   zonaVid.addEventListener("dragleave", () => zonaVid.classList.remove("encima"));
