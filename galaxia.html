@@ -1,0 +1,1539 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Jeniffer Bragg 💖</title>
+<meta name="description" content="Sitio dedicado al amor de mi vida: Jeniffer Bragg.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0018">
+
+<!-- vista previa al compartir (WhatsApp, Facebook, Telegram…) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Jeniffer Bragg">
+<meta property="og:title" content="Jeniffer Bragg 💖">
+<meta property="og:description" content="Sitio dedicado al amor de mi vida: Jeniffer Bragg.">
+<meta property="og:url" content="https://www.jenifferbragg.com/">
+<meta property="og:image" content="https://www.jenifferbragg.com/og.jpg">
+<meta property="og:image:secure_url" content="https://www.jenifferbragg.com/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Jeniffer Bragg">
+<meta property="og:locale" content="es_MX">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Jeniffer Bragg 💖">
+<meta name="twitter:description" content="Sitio dedicado al amor de mi vida: Jeniffer Bragg.">
+<meta name="twitter:image" content="https://www.jenifferbragg.com/og.jpg">
+<style>
+:root{
+  --rosa:#ff6bd6; --rosa2:#ff2e9a; --lila:#b388ff; --fondo:#0a0018;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* para las visitas: sin seleccionar textos ni arrastrar imágenes (el admin sí puede) */
+body.protegido{
+  -webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+}
+body.protegido img,body.protegido video,body.protegido svg{-webkit-user-drag:none;user-drag:none}
+body.protegido input[type=range]{-webkit-user-select:auto;user-select:auto}
+html,body{margin:0;height:100%;background:var(--fondo);overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;color:#fff}
+/* la galaxia SOLO se ve dentro de la galaxia: así nunca se asoma detrás
+   del inicio ni de Jeniflix mientras algo se desvanece */
+canvas#c{display:none;position:fixed;inset:0}
+body.iniciado canvas#c{display:block}
+
+/* ---------- PANTALLA DE ENTRADA ---------- */
+#intro{
+  position:fixed;inset:0;z-index:5000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:26px;text-align:center;padding:24px;
+  background:radial-gradient(ellipse at 50% 40%, #2a0a4a 0%, #12002b 55%, #05000f 100%);
+  transition:opacity 1.2s ease, visibility 1.2s;
+}
+#intro.oculto{opacity:0;visibility:hidden;pointer-events:none}
+/* hasta que cargan los datos, el contenido está invisible: evita ver los textos por defecto */
+#intro > *{opacity:0;transition:opacity .5s ease}
+body.datos-listos #intro > *{opacity:1}
+/* al cambiar de pantalla no debe haber ninguna animación de por medio:
+   si algo se desvanece, se alcanza a ver lo que hay detrás */
+body.restaurando #intro,body.restaurando #intro > *,body.restaurando #cargando,
+body.restaurando #netflixUI,body.restaurando #playerVideo,
+body.restaurando .sticker,body.restaurando #topbar,body.restaurando #player,
+body.restaurando #hint{transition:none!important}
+#cargando{
+  position:fixed;inset:0;z-index:5200;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%, #2a0a4a 0%, #12002b 55%, #05000f 100%);
+  transition:opacity .6s ease, visibility .6s;
+}
+body.datos-listos #cargando{opacity:0;visibility:hidden}
+.corazon-svg{display:block;filter:drop-shadow(0 0 14px rgba(255,46,154,.85))}
+#cargando .lat{width:62px;height:56px;animation:latido 1.1s ease-in-out infinite}
+/* fondo personalizado de la portada */
+#intro.con-fondo{background:var(--fondo-portada) center/cover no-repeat}
+#intro.con-fondo::before{
+  content:"";position:absolute;inset:0;background:rgba(8,0,20,.62);backdrop-filter:blur(1px);
+}
+#intro.con-fondo > *{position:relative;z-index:1}
+#intro .kitty-intro{width:130px;height:130px;animation:flotar 3s ease-in-out infinite}
+#intro h1{
+  margin:0;font-size:clamp(28px,7vw,54px);font-weight:800;letter-spacing:1px;
+  background:linear-gradient(90deg,#ff6bd6,#ffd1ec,#b388ff,#ff6bd6);
+  background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:brillo-texto 5s linear infinite;
+}
+#intro p{margin:0;max-width:520px;color:#e8d7ff;font-size:clamp(15px,4vw,19px);line-height:1.6}
+#btnEntrar{
+  border:none;cursor:pointer;padding:16px 42px;border-radius:999px;font-size:18px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--rosa2),var(--lila));
+  box-shadow:0 0 25px rgba(255,46,154,.7),0 0 60px rgba(179,136,255,.4);
+  transition:transform .25s, box-shadow .25s;animation:latido 1.6s ease-in-out infinite;
+}
+#btnEntrar:hover{transform:scale(1.08)}
+@keyframes latido{0%,100%{transform:scale(1)}25%{transform:scale(1.06)}40%{transform:scale(1)}60%{transform:scale(1.06)}}
+@keyframes brillo-texto{0%{background-position:0 0}100%{background-position:300% 0}}
+/* los gatitos flotan derechos: la inclinación los hacía verse chuecos */
+@keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+#intro small{color:#9f86c9;font-size:12px}
+.pregunta-intro{color:#c9a6ff!important;font-size:15px!important;letter-spacing:.5px}
+
+/* ---------- CUADROS DE SELECCIÓN ---------- */
+#tiles{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
+.tile{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.tile span{font-size:14px;color:#bfa8e8;transition:color .25s}
+.tile:hover span{color:#fff}
+.tile-cara{
+  width:130px;height:130px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  transition:transform .25s, box-shadow .25s;border:2px solid transparent;
+}
+.tile:hover .tile-cara{transform:scale(1.1)}
+.tile-n .tile-cara{background:#000;box-shadow:0 0 22px rgba(229,9,20,.45)}
+.tile-n:hover .tile-cara{border-color:#e50914;box-shadow:0 0 40px rgba(229,9,20,.8)}
+.tile-n svg{width:62px;height:74px}
+.tile-q .tile-cara{background:linear-gradient(160deg,#241040,#12002b);box-shadow:0 0 22px rgba(179,136,255,.4)}
+.tile-q:hover .tile-cara{border-color:var(--lila);box-shadow:0 0 40px rgba(179,136,255,.8)}
+.tile-q .tile-cara{position:relative}
+.candado{font-size:52px;filter:drop-shadow(0 0 12px rgba(179,136,255,.8))}
+.interrogacion{
+  position:absolute;top:8px;right:12px;
+  font-size:34px;font-weight:800;color:var(--lila);text-shadow:0 0 18px var(--lila);
+  animation:pulso-q 2s ease-in-out infinite;
+}
+@keyframes pulso-q{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
+@media (max-width:600px){ .tile-cara{width:104px;height:104px} .tile-n svg{width:48px;height:58px} .candado{font-size:42px} .interrogacion{font-size:27px} }
+
+/* (el modo Netflix vive en index.html: esta página es solo la galaxia) */
+
+/* ---------- MODAL SORPRESA ---------- */
+#modalSorpresa{
+  position:fixed;inset:0;z-index:5500;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,0,15,.8);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:all .35s;
+}
+#modalSorpresa.abierta{opacity:1;visibility:visible}
+.caja-sorpresa{
+  max-width:400px;width:100%;text-align:center;border-radius:24px;padding:38px 30px;
+  background:linear-gradient(160deg,#241040,#12002b);border:1px solid rgba(179,136,255,.5);
+  box-shadow:0 0 50px rgba(179,136,255,.5);
+  transform:scale(.7);transition:transform .4s cubic-bezier(.68,-.55,.27,1.55);
+}
+#modalSorpresa.abierta .caja-sorpresa{transform:scale(1)}
+.corazon-lindo{
+  width:72px;height:65px;margin:0 auto 20px;
+  animation:latido 1.2s ease-in-out infinite;
+  filter:drop-shadow(0 0 16px rgba(255,46,154,.85)) drop-shadow(0 0 40px rgba(179,136,255,.5));
+}
+.caja-sorpresa p{color:#e8d7ff;font-size:16px;line-height:1.7;white-space:pre-wrap}
+#cerrarSorpresa{
+  border:none;cursor:pointer;padding:11px 32px;border-radius:999px;font-size:15px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--rosa2),var(--lila));box-shadow:0 0 18px rgba(255,46,154,.5);
+}
+
+/* ---------- BARRA SUPERIOR ---------- */
+#topbar{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:1200;
+  display:flex;gap:10px;opacity:0;transition:opacity 1s .8s;
+}
+body.iniciado #topbar{opacity:1}
+.chip{
+  border:1px solid rgba(255,107,214,.55);background:rgba(20,0,40,.55);backdrop-filter:blur(8px);
+  color:#ffd1ec;padding:9px 16px;border-radius:999px;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:all .25s;user-select:none;
+  box-shadow:0 0 12px rgba(255,46,154,.35);
+}
+.chip:hover{background:rgba(255,46,154,.25);transform:translateY(-2px)}
+
+/* ---------- REPRODUCTOR ---------- */
+#player{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);width:92%;max-width:560px;z-index:1200;
+  display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:999px;
+  border:1px solid rgba(255,107,214,.6);background:rgba(20,0,40,.6);backdrop-filter:blur(10px);
+  box-shadow:0 0 18px rgba(255,46,154,.5),0 0 45px rgba(179,136,255,.25);
+  opacity:0;transition:opacity 1s 1.2s;
+}
+body.iniciado #player{opacity:1}
+#play{
+  background:linear-gradient(135deg,var(--rosa2),var(--lila));border:none;color:#fff;width:44px;height:44px;
+  min-width:44px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 14px rgba(255,46,154,.8);transition:transform .2s;
+}
+#play:hover{transform:scale(1.12)}
+#discoNota{font-size:22px;animation:girar 4s linear infinite;animation-play-state:paused}
+body.tocando #discoNota{animation-play-state:running}
+@keyframes girar{to{transform:rotate(360deg)}}
+#progress{flex:1;height:12px;background:rgba(255,255,255,.12);border-radius:999px;cursor:pointer;overflow:hidden}
+#progress-bar{
+  height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(270deg,var(--rosa),var(--rosa2),var(--lila),var(--rosa));
+  background-size:400% 100%;animation:flujo 5s ease infinite;box-shadow:0 0 10px var(--rosa2);
+}
+@keyframes flujo{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+#time{min-width:78px;text-align:right;font-size:12px;color:#ffd1ec;text-shadow:0 0 6px var(--rosa2)}
+
+/* ---------- STICKERS KAWAII ---------- */
+.sticker{
+  position:fixed;z-index:900;width:88px;height:88px;cursor:pointer;user-select:none;
+  filter:drop-shadow(0 0 10px rgba(255,107,214,.55));
+  animation:flotar var(--dur,4s) ease-in-out infinite;transition:transform .25s;
+  opacity:0;
+}
+body.iniciado .sticker{opacity:1;transition:opacity 1.5s 1.5s, transform .25s}
+.sticker:hover{transform:scale(1.18)}
+.sticker svg{width:100%;height:100%}
+.burbuja{
+  position:fixed;z-index:1500;max-width:230px;padding:12px 16px;border-radius:18px;font-size:14px;line-height:1.45;
+  background:#fff;color:#d1157f;font-weight:600;box-shadow:0 4px 25px rgba(255,46,154,.55);
+  transform:scale(0);transform-origin:bottom center;transition:transform .3s cubic-bezier(.68,-.55,.27,1.55);
+  pointer-events:none;text-align:center;
+}
+.burbuja.visible{transform:scale(1)}
+.burbuja::after{
+  content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+  border:10px solid transparent;border-top-color:#fff;border-bottom:0;
+}
+
+/* ---------- CORAZONES FLOTANTES (DOM) ---------- */
+.corazon-up{
+  position:fixed;z-index:800;pointer-events:none;font-size:22px;
+  animation:sube linear forwards;
+}
+@keyframes sube{
+  0%{transform:translateY(0) scale(.6) rotate(0);opacity:0}
+  12%{opacity:1}
+  100%{transform:translateY(-72vh) scale(1.25) rotate(28deg);opacity:0}
+}
+
+/* ---------- MODAL CARTA ---------- */
+#modalCarta{
+  position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,0,15,.75);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:all .4s;
+}
+#modalCarta.abierta{opacity:1;visibility:visible}
+#carta{
+  width:100%;max-width:520px;max-height:80vh;overflow-y:auto;border-radius:24px;padding:34px 30px;position:relative;
+  background:linear-gradient(160deg,#fff6fb,#ffe3f4);color:#8e1060;
+  box-shadow:0 0 40px rgba(255,46,154,.6),0 0 100px rgba(179,136,255,.3);
+  transform:scale(.7) rotate(-3deg);transition:transform .45s cubic-bezier(.68,-.55,.27,1.55);
+}
+#modalCarta.abierta #carta{transform:scale(1) rotate(0)}
+#carta h2{margin:0 0 14px;font-size:24px;color:#d1157f;display:flex;align-items:center;gap:8px}
+#textoCarta{font-size:16px;line-height:1.8;white-space:pre-wrap;min-height:120px}
+#cursor{display:inline-block;width:2px;background:#d1157f;animation:parpadeo .7s steps(1) infinite}
+@keyframes parpadeo{50%{opacity:0}}
+#cerrarCarta{
+  position:absolute;top:12px;right:14px;border:none;background:#ffd1ec;color:#d1157f;width:34px;height:34px;
+  border-radius:50%;font-size:16px;cursor:pointer;font-weight:700;
+}
+#firmaCarta{margin-top:18px;text-align:right;font-style:italic;color:#b0338a;font-weight:600}
+
+/* ---------- AVISO GIRA ---------- */
+#hint{
+  position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:1100;font-size:13px;color:#c9a6ff;
+  background:rgba(20,0,40,.5);padding:7px 16px;border-radius:999px;backdrop-filter:blur(6px);
+  opacity:0;transition:opacity 1s 2.2s;pointer-events:none;white-space:nowrap;
+}
+body.iniciado #hint{opacity:.9}
+body.iniciado #hint.fuera{opacity:0;transition:opacity 1s}
+
+@media (max-width:600px){
+  .sticker{width:64px;height:64px}
+  .chip{font-size:12.5px;padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<div id="cargando">
+  <svg class="corazon-svg lat" viewBox="0 0 32 29" aria-hidden="true">
+    <defs>
+      <linearGradient id="gradCorazon" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#ff2e9a"/>
+      </linearGradient>
+    </defs>
+    <path d="M16 28.2 C16 28.2 1.4 19.6 1.4 9.9 C1.4 4.9 5.2 1.2 9.7 1.2 C12.5 1.2 14.8 2.7 16 4.9 C17.2 2.7 19.5 1.2 22.3 1.2 C26.8 1.2 30.6 4.9 30.6 9.9 C30.6 19.6 16 28.2 16 28.2 Z" fill="url(#gradCorazon)"/>
+  </svg>
+</div>
+
+<!-- ======= PANTALLA DE ENTRADA ======= -->
+<div id="intro">
+  <div class="kitty-intro" id="kittyIntro"></div>
+  <h1 id="tituloIntro">Para Ti 💖</h1>
+  <p id="subtituloIntro">Hice una galaxia entera solo para ti…<br>porque ni todo el universo alcanza para decirte cuánto te amo.</p>
+  <p class="pregunta-intro">¿Qué quieres ver hoy?</p>
+  <div id="tiles">
+    <div class="tile tile-n" id="tileNetflix" tabindex="0" role="button">
+      <div class="tile-cara">
+        <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="jSombra" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#8f050d"/><stop offset="1" stop-color="#e50914"/>
+            </linearGradient>
+          </defs>
+          <path d="M54 6 H78 V80 Q78 114 46 114 Q18 114 18 86 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="#e50914"/>
+          <path d="M54 6 H66 V80 Q66 100 47 100 Q40 100 40 92 V76 H40 V87 Q40 95 47 95 Q54 95 54 82 Z" fill="url(#jSombra)" opacity=".75"/>
+        </svg>
+      </div>
+      <span id="etiquetaFlix">Películas</span>
+    </div>
+    <div class="tile tile-q" id="tileSorpresa" tabindex="0" role="button">
+      <div class="tile-cara">
+        <div class="candado">🔒</div>
+        <div class="interrogacion">?</div>
+      </div>
+      <span>Sorpresa</span>
+    </div>
+  </div>
+</div>
+
+<!-- (Jeniflix no existe en esta página: es solo la galaxia) -->
+
+<!-- ======= MODAL SORPRESA ======= -->
+<div id="modalSorpresa">
+  <div class="caja-sorpresa">
+    <svg class="corazon-svg corazon-lindo" viewBox="0 0 32 29" aria-hidden="true">
+      <defs>
+        <linearGradient id="gradCorazon2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#ff2e9a"/>
+        </linearGradient>
+      </defs>
+      <path d="M16 28.2 C16 28.2 1.4 19.6 1.4 9.9 C1.4 4.9 5.2 1.2 9.7 1.2 C12.5 1.2 14.8 2.7 16 4.9 C17.2 2.7 19.5 1.2 22.3 1.2 C26.8 1.2 30.6 4.9 30.6 9.9 C30.6 19.6 16 28.2 16 28.2 Z" fill="url(#gradCorazon2)"/>
+    </svg>
+    <p id="textoSorpresa"></p>
+    <button id="cerrarSorpresa">Cerrar</button>
+  </div>
+</div>
+
+<!-- ======= ESCENA 3D ======= -->
+<canvas id="c"></canvas>
+
+<!-- ======= BARRA SUPERIOR ======= -->
+<div id="topbar">
+  <div class="chip" id="btnInicioGalaxia" style="display:none">← Inicio</div>
+  <div class="chip" id="btnCarta">💌 Léeme</div>
+</div>
+
+
+<!-- ======= REPRODUCTOR ======= -->
+<div id="player">
+  <span id="discoNota" style="display:none">🎵</span>
+  <button id="play">▶</button>
+  <div id="progress"><div id="progress-bar"></div></div>
+  <div id="time">0:00 / 0:00</div>
+</div>
+
+<!-- ======= MODAL CARTA ======= -->
+<div id="modalCarta">
+  <div id="carta">
+    <button id="cerrarCarta">✕</button>
+    <h2>💌 Una carta para ti</h2>
+    <div id="textoCarta"></div><span id="cursor">&nbsp;</span>
+    <div id="firmaCarta"></div>
+  </div>
+</div>
+
+<audio id="audio" loop></audio>
+
+<!-- Three.js NO se carga al inicio: solo al entrar a la galaxia (ver más abajo
+     cargarThree). Así ver películas nunca toca el motor 3D ni gasta esa memoria. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============================================================
+   ✏️  VALORES POR DEFECTO
+   (si el panel /admin ya guardó datos en Supabase, se usan esos)
+   ============================================================ */
+const DEFAULTS = {
+  sorpresaActiva: false,
+  sorpresaMensaje: "Se desbloquea el 12 de agosto",
+  flixTitulo: "Nuestros videos 💕",
+  flixLogo: "JENIFLIX",
+  flixEtiqueta: "Películas",
+  fondoPortada: "",   // URL de imagen de fondo para la portada (vacío = tema oscuro)
+  musicaActiva: true,
+  musicaUrl: "https://f005.backblazeb2.com/file/jenifferbragg/musica/galaxia.mp3",
+  nombre: "JENIFFER",
+  tituloIntro: "Para Ti, Jeniffer 💖",
+  subtituloIntro: "Hice una galaxia entera solo para ti…\nporque ni todo el universo alcanza para decirte cuánto te amo.",
+  mensajeCentral: "TE AMO ❤️",
+  firma: "— Con todo mi corazón, Irving Monroy.",
+  carta: `Mi amor:
+
+Si estás leyendo esto, es porque quise regalarte algo que no se rompe, no se marchita y no se acaba: un pedacito de universo.
+
+Cada estrella que ves girando aquí es un momento contigo. Cada corazón que flota es un "te amo" que a veces no alcanzo a decirte.
+
+Gracias por tu risa, por tu paciencia, por ser mi calma y mi locura al mismo tiempo.
+
+Te amo hoy, te amo mañana, y te amaré en cada galaxia que exista. ✨`,
+  frases: [
+    "Te amo","JENIFFER","Nosotros","Tu risa","Nuestra galaxia",
+    "979 fotos","Desde 2025","Equipo de dos","Más por venir","Sin final"
+  ],
+  frasesKitty: [
+    "Cada foto de nuestra galaxia la conté con mis bigotes 🐱",
+    "Son 979 recuerdos flotando… y todos son nuestros",
+    "Gira despacito: hay fotos escondidas hasta el fondo",
+    "Si encuentras tu foto favorita, pide un deseo ✨",
+    "Esta galaxia no está en ningún mapa: es solo nuestra",
+    "Miau~ cada estrella que ves fue un buen día",
+    "Aquí no hay fotos malas, las revisé una por una 🐾",
+    "¿Ya viste la del fondo? Sigue girando…",
+    "Toda esta galaxia cabe en un solo abrazo",
+    "Esta constelación no viene en los libros: se llama Nosotros",
+    "Ninguna estrella brilla como tú en estas fotos",
+    "Aquí el tiempo no pasa: cada foto sigue ocurriendo",
+    "Armé este universo foto por foto, sin prisa",
+    "Si te pierdes entre tantas fotos, yo te guío 🐱",
+    "Hay 979 razones girando a tu alrededor",
+    "Cada vuelta cuenta nuestra historia de nuevo",
+    "Las galaxias tienen polvo; la nuestra, puros buenos ratos",
+    "Junté todo esto pensando en ti, miau",
+    "No es magia: somos nosotros en 979 pedacitos",
+    "Nuestra galaxia crece con cada foto que nos tomamos"
+  ]
+};
+
+let CONFIG = DEFAULTS;
+let FOTOS = [];      // URLs públicas de las fotos subidas desde /admin
+let VIDEOS = [];     // videos del modo Netflix: {nombre, url}
+let ES_ADMIN = false; // true si hay sesión iniciada en /admin (mismo navegador)
+let SB = null;        // cliente de Supabase, para la sala compartida
+
+/* ============================================================
+   ☁️ CARGA REMOTA (Supabase) con respaldo local
+   ============================================================ */
+(async function arranque() {
+  try {
+    const cred = window.GALAXIA_SUPABASE;
+    if (cred && cred.url && cred.url.indexOf("https") === 0 && window.supabase) {
+      const sb = window.supabase.createClient(cred.url, cred.anonKey);
+      SB = sb;
+      const [cfgRes, sesRes] = await Promise.all([
+        sb.from("galaxia_config").select("data").eq("id", 1).maybeSingle(),
+        sb.auth.getSession()
+      ]);
+      ES_ADMIN = !!(sesRes.data && sesRes.data.session);
+      if (cfgRes.data && cfgRes.data.data && Object.keys(cfgRes.data.data).length) {
+        CONFIG = Object.assign({}, DEFAULTS, cfgRes.data.data);
+      }
+    }
+  } catch (e) {
+    console.warn("Supabase no disponible, usando valores locales:", e);
+  }
+  try {
+    // esta página NO pide la lista de películas: solo las fotos de la galaxia
+    const rf = await fetch("/api/archivos?carpeta=fotos");
+    if (false) {
+      VIDEOS = ((await rv.json()).archivos || []).map(a => Object.assign({ origen: "b2" }, a));
+      // videos agregados por link desde el panel
+      (CONFIG.videosLink || []).forEach(l => VIDEOS.push({
+        origen: "link", fileName: l.id, url: l.url, embed: !!l.embed,
+        nombre: l.nombre || l.url, tam: 0
+      }));
+      // orden del panel: pendientes primero (por su orden), terminadas al final
+      const meta = CONFIG.videosMeta || {};
+      VIDEOS.sort((a, b) => {
+        const ma = meta[a.fileName] || {}, mb = meta[b.fileName] || {};
+        if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;
+        // sin orden asignado = recién subido: va hasta arriba
+        // (la API las entrega de más nueva a más vieja y el orden se respeta)
+        const oa = ma.orden === undefined ? -1 : ma.orden;
+        const ob = mb.orden === undefined ? -1 : mb.orden;
+        return oa - ob;
+      });
+      VIDEOS.forEach(v => {
+        const m = meta[v.fileName] || {};
+        v.terminada = !!m.terminada;
+        v.titulo = m.titulo || "";
+        v.miniatura = m.miniatura || "";
+        v.subtitulo = m.subtitulo || "";
+      });
+    }
+    if (rf.ok) FOTOS = ((await rf.json()).archivos || []).map(f => f.url);
+  } catch (e) {
+    console.warn("No se pudieron cargar los archivos:", e);
+  }
+  iniciar();
+})();
+
+/* ============================================================
+   🐱 STICKER KAWAII (gatita con moño, estilo kitty)
+   ============================================================ */
+function kittySVG(color = "#ff5aa7", moño = "#ff2e9a") {
+  return `
+  <svg viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
+    <g>
+      <path d="M18 38 Q12 8 34 16 L48 26 Z" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
+      <path d="M102 38 Q108 8 86 16 L72 26 Z" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
+      <ellipse cx="60" cy="58" rx="46" ry="38" fill="#fff" stroke="#3b2b3a" stroke-width="3"/>
+      <g transform="translate(84,24) rotate(18)">
+        <circle cx="0" cy="0" r="7" fill="${moño}"/>
+        <path d="M-2 0 Q-20 -14 -16 2 Q-14 12 -2 2 Z" fill="${moño}"/>
+        <path d="M2 0 Q20 -14 16 2 Q14 12 2 2 Z" fill="${moño}"/>
+      </g>
+      <ellipse cx="42" cy="58" rx="4.5" ry="6.5" fill="#3b2b3a"/>
+      <ellipse cx="78" cy="58" rx="4.5" ry="6.5" fill="#3b2b3a"/>
+      <circle cx="43.5" cy="55.5" r="1.6" fill="#fff"/>
+      <circle cx="79.5" cy="55.5" r="1.6" fill="#fff"/>
+      <ellipse cx="60" cy="66" rx="4.5" ry="3.4" fill="#ffd93b"/>
+      <g stroke="#3b2b3a" stroke-width="2.6" stroke-linecap="round">
+        <line x1="6"  y1="52" x2="26" y2="56"/><line x1="4"  y1="64" x2="25" y2="64"/><line x1="6"  y1="76" x2="26" y2="71"/>
+        <line x1="114" y1="52" x2="94" y2="56"/><line x1="116" y1="64" x2="95" y2="64"/><line x1="114" y1="76" x2="94" y2="71"/>
+      </g>
+      <ellipse cx="34" cy="70" rx="6" ry="4" fill="${color}" opacity=".45"/>
+      <ellipse cx="86" cy="70" rx="6" ry="4" fill="${color}" opacity=".45"/>
+      <path d="M60 96 l-9-8 a6 6 0 1 1 9-7 a6 6 0 1 1 9 7 Z" fill="${moño}"/>
+    </g>
+  </svg>`;
+}
+
+/* ============================================================
+   💖 CORAZONES QUE SUBEN (DOM) — disponible desde el inicio
+   ============================================================ */
+const EMOJIS = ["💖","💕","💗","💓","💘","❤️","🩷","💜"];
+function ráfagaCorazones(x, y, n = 8) {
+  for (let i = 0; i < n; i++) {
+    const h = document.createElement("div");
+    h.className = "corazon-up";
+    h.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    h.style.left = (x + (Math.random() - .5) * 90) + "px";
+    h.style.top = (y + (Math.random() - .5) * 30) + "px";
+    h.style.fontSize = (16 + Math.random() * 18) + "px";
+    h.style.animationDuration = (2.2 + Math.random() * 2) + "s";
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 4500);
+  }
+}
+
+/* ============================================================
+   🚀 INICIO — todo lo que depende de CONFIG y FOTOS
+   ============================================================ */
+function iniciar() {
+
+/* --- bloqueo de selección y clic derecho, para todos --- */
+{
+  document.body.classList.add("protegido");
+  addEventListener("contextmenu", e => e.preventDefault());
+  addEventListener("dragstart", e => e.preventDefault());
+  addEventListener("selectstart", e => {
+    // los controles (como la barra de volumen) sí deben seguir respondiendo
+    if (!e.target.closest || !e.target.closest("input,textarea,button")) e.preventDefault();
+  });
+}
+
+/* --- textos y fondo de la intro --- */
+document.getElementById("kittyIntro").innerHTML = kittySVG();
+document.getElementById("tituloIntro").textContent = CONFIG.tituloIntro;
+document.getElementById("subtituloIntro").innerText = CONFIG.subtituloIntro;
+
+const intro = document.getElementById("intro");
+// el fondo se prepara aquí, pero la pantalla NO se revela todavía:
+// primero hay que saber a dónde volver, si no se alcanza a ver el inicio
+const fondoListo = CONFIG.fondoPortada
+  ? new Promise(listo => {
+      const img = new Image();
+      img.onload = () => {
+        intro.style.setProperty("--fondo-portada", `url("${CONFIG.fondoPortada}")`);
+        intro.classList.add("con-fondo");
+        listo();
+      };
+      img.onerror = listo;
+      img.src = CONFIG.fondoPortada;
+    })
+  : Promise.resolve();
+
+/* --- audio --- */
+const audio = document.getElementById("audio");
+if (CONFIG.musicaActiva && CONFIG.musicaUrl) audio.src = CONFIG.musicaUrl;
+else document.getElementById("player").style.display = "none";
+
+async function entrarGalaxia() {
+  // se guarda "inicio" a propósito: al recargar dentro de la galaxia
+  // deben volver a la portada, no quedarse en la sorpresa
+  recordarPantalla("inicio");
+  montarGalaxia();            // la escena 3D y sus fotos se construyen aquí
+  document.getElementById("intro").classList.add("oculto");
+  document.body.classList.add("iniciado");
+  if (CONFIG.musicaActiva) {
+    try { await audio.play(); estadoPlay(true); } catch(e) { /* play manual */ }
+  }
+}
+
+/* --- sonido "tudum" sintetizado (sin archivos externos) --- */
+function sonidoTudum() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ac = new AC();
+    const golpe = (t0, frec, dur, vol) => {
+      const osc = ac.createOscillator(), g = ac.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frec, t0);
+      osc.frequency.exponentialRampToValueAtTime(frec * .55, t0 + dur);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + .012);
+      g.gain.exponentialRampToValueAtTime(.001, t0 + dur);
+      osc.connect(g); g.connect(ac.destination);
+      osc.start(t0); osc.stop(t0 + dur + .05);
+    };
+    const t = ac.currentTime + .05;
+    golpe(t, 155, .30, .45);          // "tu"
+    golpe(t + .26, 104, .95, .55);    // "dum"
+    golpe(t + .26, 52, 1.0, .35);     // grave de apoyo
+  } catch (e) { /* sin sonido, no pasa nada */ }
+}
+
+/* ============================================================
+   🔄 MANTENERSE AL DÍA
+   La página revisa sola si cambiaron los títulos, portadas o
+   subtítulos y se actualiza sin que haya que recargar a mano.
+   Nunca interrumpe una película que se esté viendo.
+   ============================================================ */
+let huellaDatos = "";
+
+async function traerDatosFrescos() {
+  const cred = window.GALAXIA_SUPABASE || {};
+  const nuevo = { cfg: null, videos: null };
+  if (SB) {
+    const r = await SB.from("galaxia_config").select("data").eq("id", 1).maybeSingle();
+    if (r && r.data && r.data.data) nuevo.cfg = r.data.data;
+  }
+  const rv = await fetch("/api/archivos?carpeta=videos&t=" + Date.now(), { cache: "no-store" });
+  if (rv.ok) nuevo.videos = (await rv.json()).archivos || [];
+  const rf = await fetch("/api/archivos?carpeta=fotos&t=" + Date.now(), { cache: "no-store" });
+  if (rf.ok) nuevo.fotos = ((await rf.json()).archivos || []).map(f => f.url);
+  return nuevo;
+}
+
+function armarVideos(lista, meta) {
+  const salida = (lista || []).map(a => Object.assign({ origen: "b2" }, a));
+  (CONFIG.videosLink || []).forEach(l => salida.push({
+    origen: "link", fileName: l.id, url: l.url, embed: !!l.embed,
+    nombre: l.nombre || l.url, tam: 0
+  }));
+  salida.sort((a, b) => {
+    const ma = meta[a.fileName] || {}, mb = meta[b.fileName] || {};
+    if (!!ma.terminada !== !!mb.terminada) return ma.terminada ? 1 : -1;
+    const oa = ma.orden === undefined ? -1 : ma.orden;
+    const ob = mb.orden === undefined ? -1 : mb.orden;
+    return oa - ob;
+  });
+  salida.forEach(v => {
+    const m = meta[v.fileName] || {};
+    v.terminada = !!m.terminada;
+    v.titulo = m.titulo || "";
+    v.miniatura = m.miniatura || "";
+    v.subtitulo = m.subtitulo || "";
+  });
+  return salida;
+}
+
+async function revisarCambios(forzar) {
+  let d;
+  try { d = await traerDatosFrescos(); } catch (e) { return; }
+  if (!d.videos) return;
+
+  const cfg = d.cfg || {};
+  const huella = JSON.stringify([cfg.videosMeta, cfg.videosLink, cfg.flixTitulo,
+    cfg.flixLogo, cfg.flixEtiqueta, d.videos.map(v => v.fileName)]);
+  if (!forzar && huella === huellaDatos) return;
+  huellaDatos = huella;
+
+  CONFIG = Object.assign({}, DEFAULTS, cfg);
+  if (d.fotos) FOTOS = d.fotos;
+}
+
+/* Buscar cambios implica pedir datos y volver a dibujar la lista de películas.
+   Si eso ocurre a media película, en la tele se siente un tirón: por eso no se
+   revisa mientras se está viendo algo. */
+setInterval(() => { if (!document.hidden) revisarCambios(); }, 40000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) revisarCambios(); });
+
+/* --- recordar en qué pantalla se quedaron --- */
+/* ¿estamos en una smart TV? (Android TV, Fire TV, Tizen de Samsung,
+   webOS de LG, Roku, Chromecast…). En ese caso la portada estorba:
+   se entra directo a las películas. */
+function esSmartTV() {
+  const ua = navigator.userAgent || "";
+  return /smart-?tv|smarttv|tizen|web0s|webos|netcast|hbbtv|viera|bravia|aquos|googletv|android\s*tv|crkey|aft[a-z]{1,3}|firetv|fire\s*tv|philips\s*tv|inettv|opera\s*tv|vidaa|roku|dlnadoc|netrange/i.test(ua)
+      || (/android/i.test(ua) && !/mobile/i.test(ua) && !("ontouchstart" in window));
+}
+
+/* Se marca cuándo se está usando dedo o mouse, para no dibujar el
+   recuadro de selección (que solo hace falta con el control de la tele) */
+addEventListener("pointerdown", () => document.body.classList.add("con-puntero"), true);
+addEventListener("keydown", e => {
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Tab","Enter"].includes(e.key) || e.keyCode === 13)
+    document.body.classList.remove("con-puntero");
+}, true);
+
+const CLAVE_PANTALLA = "jeniflix_pantalla";
+function recordarPantalla(p) { try { localStorage.setItem(CLAVE_PANTALLA, p); } catch (e) {} }
+function pantallaGuardada() { try { return localStorage.getItem(CLAVE_PANTALLA); } catch (e) { return null; } }
+
+/* Ejecuta un cambio de pantalla sin animaciones, para que nunca se asome
+   lo que hay debajo mientras algo se desvanece. */
+function sinTransicion(cambio) {
+  document.body.classList.add("restaurando");
+  cambio();
+  void document.body.offsetHeight;   // obliga a aplicar los estilos ya mismo
+  setTimeout(() => document.body.classList.remove("restaurando"), 80);
+}
+
+/* --- Aquí NO hay películas ni reproductor de video: esta página es solo
+       la galaxia. Ver una película ocurre en index.html, que a su vez no
+       carga nada de 3D. Así ninguna de las dos le pesa a la otra. --- */
+
+/* ============================================================
+   🎵 ARRANQUE DE LA MÚSICA
+   Los navegadores solo dejan sonar audio si viene de un toque del
+   usuario. Se arranca en silencio dentro del clic (que sí está
+   permitido) y se le quita el silencio después. Si algo falla,
+   se reintenta con el siguiente toque en cualquier parte.
+   ============================================================ */
+function musicaSonando() { return !audio.paused && !audio.muted; }
+function enLaGalaxia() { return document.body.classList.contains("iniciado"); }
+
+function pararMusica() {
+  try { audio.pause(); } catch (e) {}
+  estadoPlay(false);
+}
+
+function arrancarMusica(retraso) {
+  if (!CONFIG.musicaActiva || !audio.src || musicaSonando()) return;
+  try {
+    audio.muted = true;
+    const p = audio.play();
+    const alSonar = () => setTimeout(() => {
+      audio.muted = false;
+      if (audio.paused) audio.play().catch(() => {});
+      estadoPlay(true);
+    }, retraso || 0);
+    if (p && p.then) p.then(alSonar).catch(() => {}); else alSonar();
+  } catch (e) {}
+}
+
+/* Red de seguridad: si no arrancó, el siguiente toque la pone en marcha.
+   OJO: solo dentro de la galaxia — en la portada y en Jeniflix no debe sonar. */
+["pointerdown", "keydown", "touchend"].forEach(ev =>
+  addEventListener(ev, () => {
+    if (enLaGalaxia() && !musicaSonando()) arrancarMusica(0);
+  }, { passive: true }));
+
+/* --- cuadro sorpresa 🔒: la galaxia, con cuenta regresiva ---
+   Se abre sola el 12 de agosto de 2026 a las 5:00 PM de Mazatlán
+   (UTC-7). El switch del panel sigue sirviendo como llave manual. */
+const MOMENTO_SORPRESA = Date.UTC(2026, 7, 13, 0, 0, 0);   // 12 ago 17:00 Mazatlán
+
+function sorpresaAbierta() {
+  return CONFIG.sorpresaActiva || Date.now() >= MOMENTO_SORPRESA;
+}
+function desbloqueadaParaMi() { return sorpresaAbierta() || ES_ADMIN; }
+const desbloqueada = desbloqueadaParaMi();   // para el resto del código (restaurar pantalla)
+
+const tileSorpresa = document.getElementById("tileSorpresa");
+const modalSorpresa = document.getElementById("modalSorpresa");
+const subEl = document.getElementById("subtituloIntro");
+
+function textoCuenta() {
+  let s = Math.max(0, Math.floor((MOMENTO_SORPRESA - Date.now()) / 1000));
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), g = s % 60;
+  const hh = String(h).padStart(2, "0"), mm = String(m).padStart(2, "0"), gg = String(g).padStart(2, "0");
+  return (d ? d + (d === 1 ? " día " : " días ") : "") + hh + ":" + mm + ":" + gg;
+}
+
+function pintarEstadoSorpresa() {
+  const abierta = sorpresaAbierta();
+  tileSorpresa.querySelector(".candado").textContent = desbloqueadaParaMi() ? "💖" : "🔒";
+  if (abierta) {
+    subEl.innerText = "¡La sorpresa ya está abierta! 💖";
+  } else {
+    subEl.innerText = "La sorpresa se abre en " + textoCuenta() + " ⏳";
+    if (modalSorpresa.classList.contains("abierta")) {
+      document.getElementById("textoSorpresa").innerText = "Se abre el 12 a las 5:00 PM\n\nFalta " + textoCuenta();
+    }
+  }
+}
+pintarEstadoSorpresa();
+// mientras se ve una película no hace falta repintar el conteo cada segundo:
+// en la Smart TV ese trabajo constante se notaba como tironcitos en el video
+setInterval(pintarEstadoSorpresa, 1000);
+
+tileSorpresa.addEventListener("click", () => {
+  if (desbloqueadaParaMi()) {
+    arrancarMusica(1000);      // empieza a sonar un segundo después
+    entrarGalaxia();
+    return;
+  }
+  document.getElementById("textoSorpresa").innerText = "Se abre el 12 a las 5:00 PM\n\nFalta " + textoCuenta();
+  modalSorpresa.classList.add("abierta");
+});
+document.getElementById("cerrarSorpresa").addEventListener("click", () => modalSorpresa.classList.remove("abierta"));
+modalSorpresa.addEventListener("click", e => { if (e.target === modalSorpresa) modalSorpresa.classList.remove("abierta"); });
+
+/* Al recargar, volver a donde estaban. Se hace ANTES de revelar la pantalla
+   (y sin transiciones) para que no se alcance a ver el inicio. */
+fondoListo.then(() => {
+  sinTransicion(() => {
+    // En la tele se entra siempre directo a las películas: la portada solo
+    // estorba con el control. En PC y celular se retoma donde estaban.
+    // La galaxia nunca se retoma: siempre arranca desde la portada.
+    // se llegó aquí a propósito (desde el cuadro Sorpresa): entrar a la galaxia
+    if (desbloqueadaParaMi()) { arrancarMusica(1200); entrarGalaxia(); }
+    document.body.classList.add("datos-listos");            // recién ahora se revela
+  });
+});
+
+/* --- reproductor --- */
+const playBtn = document.getElementById("play"),
+      progress = document.getElementById("progress"),
+      progressBar = document.getElementById("progress-bar"),
+      timeDisplay = document.getElementById("time");
+let tocando = false;
+
+function estadoPlay(v){ tocando = v; playBtn.textContent = v ? "❚❚" : "▶"; document.body.classList.toggle("tocando", v); }
+function fmt(s){ if(!isFinite(s)) return "0:00"; return Math.floor(s/60)+":"+Math.floor(s%60).toString().padStart(2,"0"); }
+
+playBtn.addEventListener("click", async () => {
+  if (tocando) { audio.pause(); estadoPlay(false); }
+  else { try { await audio.play(); estadoPlay(true); } catch(e){} }
+});
+audio.addEventListener("timeupdate", () => {
+  const p = audio.currentTime / audio.duration * 100;
+  progressBar.style.width = (isFinite(p) ? p : 0) + "%";
+  timeDisplay.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+});
+progress.addEventListener("click", e => {
+  const r = progress.getBoundingClientRect(), f = (e.clientX - r.left) / r.width;
+  if (isFinite(audio.duration)) audio.currentTime = f * audio.duration;
+});
+
+/* --- carta máquina de escribir --- */
+const modal = document.getElementById("modalCarta"),
+      textoCarta = document.getElementById("textoCarta"),
+      firmaCarta = document.getElementById("firmaCarta");
+let escribiendo = null;
+
+/* Tecleo de máquina de escribir, generado al vuelo (no hay que descargar
+   ningún archivo): un golpecito seco por cada letra que aparece. */
+let audioCtx = null;
+function tecla() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t = audioCtx.currentTime;
+
+    // ruido corto = el golpe del tipo contra el papel
+    const largo = Math.floor(audioCtx.sampleRate * 0.03);
+    const buf = audioCtx.createBuffer(1, largo, audioCtx.sampleRate);
+    const datos = buf.getChannelData(0);
+    for (let i = 0; i < largo; i++) datos[i] = (Math.random() * 2 - 1) * (1 - i / largo);
+    const ruido = audioCtx.createBufferSource();
+    ruido.buffer = buf;
+
+    const filtro = audioCtx.createBiquadFilter();
+    filtro.type = "bandpass";
+    filtro.frequency.value = 1600 + Math.random() * 900;
+    filtro.Q.value = 1.1;
+
+    const vol = audioCtx.createGain();
+    vol.gain.setValueAtTime(0.075, t);
+    vol.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+
+    ruido.connect(filtro); filtro.connect(vol); vol.connect(audioCtx.destination);
+    ruido.start(t); ruido.stop(t + 0.05);
+  } catch (e) {}
+}
+
+/* lluvia de corazones mientras la carta está abierta */
+let lluviaCarta = null;
+function empezarLluvia() {
+  if (lluviaCarta) return;
+  lluviaCarta = setInterval(() => ráfagaCorazones(Math.random() * innerWidth, innerHeight - 40, 3), 260);
+}
+function pararLluvia() { clearInterval(lluviaCarta); lluviaCarta = null; }
+
+function cerrarCartaModal() {
+  modal.classList.remove("abierta");
+  clearInterval(escribiendo);
+  pararLluvia();
+}
+
+document.getElementById("btnCarta").addEventListener("click", () => {
+  modal.classList.add("abierta");
+  empezarLluvia();
+  textoCarta.textContent = ""; firmaCarta.textContent = "";
+  clearInterval(escribiendo);
+  let i = 0;
+  escribiendo = setInterval(() => {
+    const letra = CONFIG.carta[i++] || "";
+    textoCarta.textContent += letra;
+    // suena solo con letras: los espacios y saltos van mudos, como de verdad
+    if (letra.trim()) tecla();
+    if (i >= CONFIG.carta.length) {
+      clearInterval(escribiendo);
+      firmaCarta.textContent = CONFIG.firma;
+    }
+  }, 34);
+});
+document.getElementById("cerrarCarta").addEventListener("click", cerrarCartaModal);
+modal.addEventListener("click", e => { if (e.target === modal) cerrarCartaModal(); });
+
+/* Las frases del gatito salen todas antes de repetirse: se barajan y
+   se van sacando una a una; cuando se acaban, se barajan de nuevo. */
+let bolsaKitty = [];
+function siguienteFraseKitty(lista) {
+  if (!bolsaKitty.length || bolsaKitty.algunaFuera !== lista.length) {
+    bolsaKitty = alAzar(lista);
+    bolsaKitty.algunaFuera = lista.length;      // si editas la lista, se rehace
+  }
+  return bolsaKitty.pop();
+}
+
+/* --- stickers flotantes --- */
+/* el mínimo en píxeles evita que se peguen al borde y se corten
+   en pantallas anchas, en el iPad o con zoom del navegador */
+const posiciones = [
+  {left:"max(24px, 4%)",  top:"max(90px, 16%)", dur:"3.6s"},
+  {right:"max(24px, 5%)", top:"max(90px, 20%)", dur:"4.4s"},
+  {left:"max(24px, 6%)",  bottom:"max(90px, 22%)", dur:"5s"},
+  {right:"max(24px, 7%)", bottom:"max(90px, 26%)", dur:"4s"}
+];
+const coloresKitty = [["#ff5aa7","#ff2e9a"],["#b388ff","#7c4dff"],["#ffd1ec","#ff6bd6"],["#8df0ff","#38b6ff"]];
+const burbuja = document.createElement("div");
+burbuja.className = "burbuja"; document.body.appendChild(burbuja);
+let burbujaTimer = null;
+
+posiciones.forEach((pos, i) => {
+  const el = document.createElement("div");
+  el.className = "sticker";
+  el.innerHTML = kittySVG(...coloresKitty[i % coloresKitty.length]);
+  Object.assign(el.style, pos); el.style.setProperty("--dur", pos.dur);
+  el.addEventListener("click", () => {
+    const kitty = Array.isArray(CONFIG.frasesKitty) ? CONFIG.frasesKitty : [];
+    if (!kitty.length) { ráfagaCorazones(el.getBoundingClientRect().left + 40, el.getBoundingClientRect().top, 6); return; }
+    const frase = siguienteFraseKitty(kitty);
+    burbuja.textContent = frase;
+    const r = el.getBoundingClientRect();
+    // se coloca centrada sobre el gatito, pero sin salirse de la pantalla
+    burbuja.style.left = "0px"; burbuja.style.top = "0px";
+    burbuja.classList.add("visible");
+    const anchoB = burbuja.offsetWidth || 230, altoB = burbuja.offsetHeight || 60;
+    const x = r.left + r.width / 2 - anchoB / 2;
+    burbuja.style.left = Math.round(Math.min(Math.max(x, 12), innerWidth - anchoB - 12)) + "px";
+    burbuja.style.top = Math.round(Math.max(r.top - altoB - 14, 12)) + "px";
+    clearTimeout(burbujaTimer);
+    burbujaTimer = setTimeout(() => burbuja.classList.remove("visible"), 2600);
+    ráfagaCorazones(r.left + r.width/2, r.top, 6);
+  });
+  document.body.appendChild(el);
+});
+
+
+/* ============================================================
+   🌌 ESCENA 3D
+   ============================================================ */
+/* La escena 3D se construye SOLO al entrar a la galaxia y se destruye al
+   salir. Así, mientras se ve una película, no queda nada de 3D ocupando
+   memoria: en la tele y en el iPad eso era lo que cerraba la pestaña. */
+let escenaViva = false;
+let renderer = null, scene = null, camera = null, animando = false;
+
+/* Carga Three.js y el cargador de modelos SOLO la primera vez que se entra
+   a la galaxia. Antes venían en el <head> y pesaban ~600 KB que se cargaban
+   aunque uno solo quisiera ver películas. */
+let threePromesa = null;
+function cargarScriptUna(url) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = url; s.onload = ok; s.onerror = mal;
+    document.head.appendChild(s);
+  });
+}
+function cargarThree() {
+  if (window.THREE) return Promise.resolve();
+  if (!threePromesa) {
+    threePromesa = cargarScriptUna("https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js")
+      .then(() => cargarScriptUna("https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"));
+  }
+  return threePromesa;
+}
+
+async function montarGalaxia() {
+  if (escenaViva) return;
+  await cargarThree();          // trae el motor 3D si aún no está
+  if (!window.THREE || !document.body.classList.contains("iniciado")) return;  // salieron mientras cargaba
+  escenaViva = true;
+
+  const canvas = document.getElementById("c");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  function medidaPantalla() {
+    return [innerWidth  || document.documentElement.clientWidth  || 1280,
+            innerHeight || document.documentElement.clientHeight || 720];
+  }
+  renderer.setSize.apply(renderer, medidaPantalla());
+  scene = new THREE.Scene();
+  /* espacio profundo pero con vida: azul-violeta oscuro, no negro triste */
+  scene.background = new THREE.Color(0x08031c);
+  scene.fog = new THREE.FogExp2(0x08031c, 0.0006);
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 6000);
+  let targetDist = 560, currentDist = 700, rotX = .32, rotY = 0;
+
+  function texturaCorazon(color = "#ff4fa0") {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const x = c.getContext("2d");
+    x.translate(32, 34); x.scale(1.15, 1.15);
+    x.beginPath();
+    x.moveTo(0, 10);
+    x.bezierCurveTo(-16, -6, -8, -20, 0, -10);
+    x.bezierCurveTo(8, -20, 16, -6, 0, 10);
+    x.closePath();
+    x.shadowColor = color; x.shadowBlur = 12; x.fillStyle = color; x.fill();
+    return new THREE.CanvasTexture(c);
+  }
+  function texturaBrillo() {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(32, 32, 2, 32, 32, 30);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.4, "rgba(255,200,240,.6)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* estrella de verdad: núcleo pequeño y definido con un halo mínimo,
+     no una bola difusa */
+  function texturaEstrella() {
+    const c = document.createElement("canvas"); c.width = c.height = 32;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(16, 16, 0, 16, 16, 15);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(.15, "rgba(255,255,255,.95)");
+    g.addColorStop(.35, "rgba(230,235,255,.35)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 32, 32);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* --- galaxia espiral --- */
+  let galaxia;
+  (function galaxiaEspiral() {
+    const N = 9000, brazos = 4;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    const paleta = [new THREE.Color("#cfd8ff"), new THREE.Color("#ffffff"), new THREE.Color("#ffe3f2"), new THREE.Color("#b8c6ff")];
+    for (let i = 0; i < N; i++) {
+      const brazo = i % brazos;
+      const r = 60 + Math.pow(Math.random(), 1.6) * 620;
+      const ang = (brazo / brazos) * Math.PI * 2 + r * 0.0075 + (Math.random() - .5) * .55;
+      const disp = (Math.random() - .5) * (36 + r * .07);
+      pos[i*3]   = Math.cos(ang) * r + disp * (Math.random() - .5);
+      pos[i*3+1] = (Math.random() - .5) * (18 + r * .05);
+      pos[i*3+2] = Math.sin(ang) * r + disp * (Math.random() - .5);
+      const c = paleta[Math.floor(Math.random() * paleta.length)].clone();
+      c.multiplyScalar(.55 + Math.random() * .45);
+      col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    const mat = new THREE.PointsMaterial({
+      size: 1.8, map: texturaEstrella(), vertexColors: true, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    galaxia = new THREE.Points(geo, mat);
+    scene.add(galaxia);
+  })();
+
+  /* --- cielo estrellado en dos capas, como el de verdad ---
+     miles de estrellas débiles al fondo y unas cuantas brillantes que
+     titilan; con colores reales (blanco azulado, blanco, ámbar) --- */
+  let estrellasBrillantes = null;
+  (function cielo() {
+    const capa = (n, R, tam, colores, brillo) => {
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const r = R * (.5 + .5 * Math.random()), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+        pos[i*3] = r * Math.sin(p) * Math.cos(t); pos[i*3+1] = r * Math.cos(p); pos[i*3+2] = r * Math.sin(p) * Math.sin(t);
+        const c = colores[Math.floor(Math.random() * colores.length)].clone()
+          .multiplyScalar(brillo * (.6 + .4 * Math.random()));
+        col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      const p = new THREE.Points(geo, new THREE.PointsMaterial({
+        size: tam, map: texturaEstrella(), vertexColors: true, transparent: true,
+        depthWrite: false, blending: THREE.AdditiveBlending,
+        // claves para que SÍ se vean: tamaño fijo en píxeles (si no, a esa
+        // distancia el motor las encoge a menos de un píxel) y sin niebla
+        sizeAttenuation: false, fog: false
+      }));
+      scene.add(p);
+      return p;
+    };
+    const paleta = [new THREE.Color("#aabfff"), new THREE.Color("#ffffff"),
+                    new THREE.Color("#fff4e8"), new THREE.Color("#ffd9a8")];
+    capa(6500, 3200, 1.8, paleta, .8);                       // fondo denso
+    capa(1800, 2400, 2.6, paleta, .9);                       // capa media
+    estrellasBrillantes = capa(750, 2800, 3.8, paleta, 1);   // brillantes, titilan
+  })();
+
+  /* --- corazón central de partículas --- */
+  const corazonGrupo = new THREE.Group();
+  (function corazonParticulas() {
+    const N = 900;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const t = Math.random() * Math.PI * 2;
+      // corazón grande: rodea a la cámara en vez de quedar detrás de ella
+      const esc = 4.4 * (0.75 + Math.random() * 0.3);
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+      pos[i*3] = x * esc + (Math.random() - .5) * 7;
+      pos[i*3+1] = y * esc + (Math.random() - .5) * 7;
+      pos[i*3+2] = (Math.random() - .5) * 30;
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({
+      size: 4.5, map: texturaCorazon(), color: 0xff4fa0, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    corazonGrupo.add(new THREE.Points(geo, mat));
+  })();
+  scene.add(corazonGrupo);
+
+  /* ============================================================
+     📸 CÁMARA 3D en el centro, dentro del corazón
+     ============================================================ */
+  let camaraModelo = null;
+  (function cargarCamara() {
+    if (!THREE.GLTFLoader) return;
+    // los modelos con materiales necesitan luz (todo lo demás brilla solo)
+    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+    const luzRosa = new THREE.PointLight(0xff8fd0, 1.4, 400);
+    luzRosa.position.set(60, 80, 60);
+    scene.add(luzRosa);
+    const luzFria = new THREE.PointLight(0xaabfff, .8, 400);
+    luzFria.position.set(-70, -40, -60);
+    scene.add(luzFria);
+
+    new THREE.GLTFLoader().load("camara.glb", g => {
+      const obj = g.scene;
+      // centrarla y escalarla a un tamaño fijo, mida lo que mida el archivo
+      const caja = new THREE.Box3().setFromObject(obj);
+      const centro = caja.getCenter(new THREE.Vector3());
+      const tam = caja.getSize(new THREE.Vector3());
+      const escala = 52 / Math.max(tam.x, tam.y, tam.z);
+      obj.position.sub(centro.multiplyScalar(1));
+      obj.scale.setScalar(escala);
+
+      camaraModelo = new THREE.Group();
+      camaraModelo.add(obj);
+      obj.position.multiplyScalar(escala);
+      camaraModelo.position.set(0, 0, 0);
+      camaraModelo.renderOrder = 998;
+      scene.add(camaraModelo);
+    }, undefined, e => console.warn("No se pudo cargar la cámara 3D:", e));
+  })();
+
+  /* --- halo central --- */
+  function texturaHalo(t = "255,120,215", m = "160,80,255") {
+    const c = document.createElement("canvas"); c.width = c.height = 512;
+    const x = c.getContext("2d");
+    const g = x.createRadialGradient(256, 256, 20, 256, 256, 250);
+    g.addColorStop(0, `rgba(${t},.5)`); g.addColorStop(.5, `rgba(${m},.16)`); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+    return new THREE.CanvasTexture(c);
+  }
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaHalo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.set(300, 300, 1);
+  halo.position.z = -70;      // detrás de la cámara: su brillo ya no la tapa
+  scene.add(halo);
+
+  /* nebulosas lejanas de color, para que el espacio no se sienta vacío */
+  [
+    { c1: "150,110,255", c2: "80,40,180",  x: -1400, y: 350,  z: -1600, s: 1600, op: .16 },
+    { c1: "90,140,255",  c2: "40,70,200",  x: 1500,  y: -250, z: -1300, s: 1400, op: .13 },
+    { c1: "255,120,200", c2: "180,60,160", x: 300,   y: 500,  z: 1700,  s: 1500, op: .12 }
+  ].forEach(n => {
+    const neb = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: texturaHalo(n.c1, n.c2), transparent: true, opacity: n.op,
+      depthWrite: false, blending: THREE.AdditiveBlending, fog: false
+    }));
+    neb.position.set(n.x, n.y, n.z);
+    neb.scale.set(n.s, n.s, 1);
+    scene.add(neb);
+  });
+
+  /* --- texto central --- */
+  /* Dibuja el texto en un lienzo que se ajusta a lo que mide la frase,
+     así no se corta por larga que sea. Devuelve también la proporción,
+     para poder estirar el sprite igual y que no salga deformado. */
+  function texturaTexto(txt, fs = 72, color = "#ff2e7d", glow = "#ff8fd0", w, h) {
+    const fuente = `bold ${fs}px 'Segoe UI', Arial`;
+    const medidor = document.createElement("canvas").getContext("2d");
+    medidor.font = fuente;
+    // margen amplio: el brillo se sale del texto y Safari mide de menos los emojis
+    const ancho = Math.ceil(medidor.measureText(txt).width) + fs * 2.2;
+    const alto = Math.ceil(fs * 2);
+
+    // El lienzo se lleva a medidas "potencia de dos" (256, 512, 1024…).
+    // Es lo único que algunos equipos como el iPad aceptan sin reescalar
+    // por su cuenta, que era lo que descentraba y cortaba el texto.
+    const pot2 = n => { let p = 64; while (p < n) p *= 2; return p; };
+    const c = document.createElement("canvas");
+    c.width = pot2(Math.max(w || 0, ancho));
+    c.height = pot2(Math.max(h || 0, alto));
+    const x = c.getContext("2d");
+    x.font = fuente;
+    // El centrado se calcula a mano en vez de confiar en textAlign:
+    // Safari en iPad lo ignoraba y el texto salía corrido a la derecha
+    // (se veía "TE" bajo el corazón y "AMO" de lado).
+    x.textAlign = "left";
+    x.textBaseline = "middle";
+    const anchoReal = x.measureText(txt).width;
+    const px = Math.round((c.width - anchoReal) / 2);
+    const py = Math.round(c.height / 2);
+
+    x.fillStyle = color; x.shadowColor = glow; x.shadowBlur = 45;
+    x.fillText(txt, px, py);
+    x.shadowBlur = 18; x.fillText(txt, px, py);
+
+    const tex = new THREE.CanvasTexture(c);
+    // Sin esto, en iPad y otros equipos el motor reescala la textura a
+    // medidas "potencia de dos" y recorta el texto (el famoso "TE AM").
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.proporcion = c.width / c.height;      // ancho ÷ alto
+    return tex;
+  }
+  /* el TE AMO va abajo de la cámara, para no asomarse detrás de ella */
+  const texCentro = texturaTexto(CONFIG.mensajeCentral, 90);
+  const textoCentro = new THREE.Sprite(new THREE.SpriteMaterial({ map: texCentro, transparent: true, depthWrite: false }));
+  const altoCentro = 32;
+  textoCentro.scale.set(altoCentro * (texCentro.proporcion || 4), altoCentro, 1);
+  textoCentro.position.y = 58; textoCentro.renderOrder = 999;   // arriba del corazón
+  scene.add(textoCentro);
+
+  /* ============================================================
+     📸 ANILLO DE FOTOS (subidas desde /admin)
+     ============================================================ */
+  const grupoFotos = new THREE.Group();
+  scene.add(grupoFotos);
+
+  function texturaPolaroid(url) {
+    return new Promise(res => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const S = 256, b = 14, r = 18;
+        const c = document.createElement("canvas"); c.width = c.height = S;
+        const x = c.getContext("2d");
+        function rrect(x0, y0, w, h, rad) {
+          x.beginPath();
+          x.moveTo(x0 + rad, y0);
+          x.arcTo(x0 + w, y0, x0 + w, y0 + h, rad);
+          x.arcTo(x0 + w, y0 + h, x0, y0 + h, rad);
+          x.arcTo(x0, y0 + h, x0, y0, rad);
+          x.arcTo(x0, y0, x0 + w, y0, rad);
+          x.closePath();
+        }
+        x.shadowColor = "rgba(255,107,214,.9)"; x.shadowBlur = 10;
+        rrect(6, 6, S - 12, S - 12, r); x.fillStyle = "#fff"; x.fill();
+        x.shadowBlur = 0;
+        x.save();
+        rrect(6 + b, 6 + b, S - 12 - b * 2, S - 12 - b * 2, r - 8); x.clip();
+        const esc = Math.max((S - 12 - b*2) / img.width, (S - 12 - b*2) / img.height);
+        const w = img.width * esc, h = img.height * esc;
+        x.drawImage(img, 6 + b + (S - 12 - b*2 - w) / 2, 6 + b + (S - 12 - b*2 - h) / 2, w, h);
+        x.restore();
+        res(new THREE.CanvasTexture(c));
+      };
+      img.onerror = () => res(null);
+      img.src = url;
+    });
+  }
+
+  function alAzar(lista) {
+    const copia = lista.slice();
+    for (let i = copia.length - 1; i > 0; i--) {          // barajar
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = copia[i]; copia[i] = copia[j]; copia[j] = t;
+    }
+    return copia;
+  }
+
+  /* ============================================================
+     ☀️ SISTEMA SOLAR DE FOTOS
+     Anillos concéntricos alrededor del TE AMO, cada uno lleno de
+     fotos que orbitan (los de adentro giran más rápido, como los
+     planetas). Se cargan por tandas para no congelar la pantalla.
+     ============================================================ */
+  /* ============================================================
+     🌌 GALAXIA ESPIRAL DE FOTOS
+     Las fotos forman 4 brazos que se enroscan alrededor del TE AMO,
+     igual que las estrellas del fondo. Todas giran juntas, así los
+     brazos no se deforman con el tiempo.
+     ============================================================ */
+  /* Suelta de memoria las fotos de la galaxia. En el iPad, tener cientos de
+     imágenes cargadas mientras se ve una película satura la memoria y iOS
+     cierra la pestaña (por eso las sacaba de la película). */
+  let galaxiaCargada = false;
+  function liberarFotosGalaxia() {
+    if (!galaxiaCargada) return;
+    grupoFotos.children.slice().forEach(sp => {
+      if (sp.material) {
+        if (sp.material.map) sp.material.map.dispose();
+        sp.material.dispose();
+      }
+      grupoFotos.remove(sp);
+    });
+    if (renderer && renderer.renderLists) renderer.renderLists.dispose();
+    galaxiaCargada = false;
+  }
+
+  async function crearGalaxiaDeFotos() {
+    if (!FOTOS.length || galaxiaCargada) return;
+    galaxiaCargada = true;
+    const urls = alAzar(FOTOS);
+    const total = urls.length;
+
+    const BRAZOS = 4;
+    const R_MIN = 145, R_MAX = 660;
+    const ENROSQUE = 0.0075;                 // el mismo giro que las estrellas del fondo
+    const VEL = 0.0011;                      // todas iguales: la galaxia gira entera
+
+    const LOTE = 30;
+    let idx = 0;
+    for (let ini = 0; ini < total; ini += LOTE) {
+      const texturas = await Promise.all(urls.slice(ini, ini + LOTE).map(texturaPolaroid));
+      texturas.forEach(tex => {
+        if (!tex) return;
+        const i = idx++;
+        const brazo = i % BRAZOS;
+        const f = i / total;                                   // avance a lo largo del brazo
+        const r = R_MIN + f * (R_MAX - R_MIN) + (Math.random() - .5) * 34;
+        const ang = (brazo / BRAZOS) * Math.PI * 2 + r * ENROSQUE + (Math.random() - .5) * .3;
+
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+        const s = 15 + Math.random() * 9;
+        sp.scale.set(s, s, 1);
+        sp.userData = {
+          ang, r, vel: VEL,
+          y0: (Math.random() - .5) * (14 + f * 26),            // el disco engorda hacia afuera
+          fase: Math.random() * Math.PI * 2
+        };
+        sp.position.set(Math.cos(ang) * r, sp.userData.y0, Math.sin(ang) * r);
+        grupoFotos.add(sp);
+      });
+      if (!galaxiaCargada) return;      // salieron de la galaxia a media carga
+    }
+  }
+
+  /* --- frases orbitando (se reducen si hay fotos) --- */
+  const COLORES_FRASE = ["#ff8fd0","#b8a6ff","#8fd8ff","#ffd36b","#a6ffc9","#ffa4a4","#e0b3ff"];
+  const grupoFrases = new THREE.Group();
+  scene.add(grupoFrases);
+  /* las palabras que orbitan se editan desde el panel; si la lista se deja
+     vacía, simplemente no hay palabras */
+  const FRASES = [];
+  const listaFrases = Array.isArray(CONFIG.frases) ? CONFIG.frases : [];
+  const copias = FOTOS.length ? 1 : 4;
+  for (let v = 0; v < copias && listaFrases.length; v++) FRASES.push(...listaFrases);
+  FRASES.forEach((f, i) => {
+    const tex = texturaTexto(f, 54, "#ffffff", COLORES_FRASE[i % COLORES_FRASE.length]);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    const alto = 11;                                   // el sprite se estira según lo larga que sea
+    sp.scale.set(alto * (tex.proporcion || 4.7), alto, 1);
+    const phi = Math.acos(2 * Math.random() - 1), theta = Math.random() * Math.PI * 2, r = 165 + Math.random() * 150;
+    sp.position.setFromSphericalCoords(r, phi, theta);
+    sp.userData = { phi, theta, r, vel: .0008 + Math.random() * .0012, fase: Math.random() * Math.PI * 2 };
+    grupoFrases.add(sp);
+  });
+
+  /* --- estrellas fugaces --- */
+  const fugaces = [];
+  function lanzarFugaz() {
+    const geo = new THREE.BufferGeometry();
+    const n = 28, pos = new Float32Array(n * 3);
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ size: 6, map: texturaBrillo(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const p = new THREE.Points(geo, mat);
+    // cruzan más cerca y más planas, para que sí se vean pasar
+    const inicio = new THREE.Vector3((Math.random()-.5)*1800, 200 + Math.random()*380, (Math.random()-.5)*1400);
+    const dir = new THREE.Vector3((Math.random() < .5 ? 1 : -1) * (1.4 + Math.random()), -(.3 + Math.random()*.5), (Math.random()-.5)*1.2).normalize();
+    p.userData = { inicio, dir, t: 0 };
+    scene.add(p); fugaces.push(p);
+  }
+  setInterval(() => { if (fugaces.length < 6) lanzarFugaz(); }, 1500);
+
+  /* --- controles --- */
+  let arrastrando = false, lx = 0, ly = 0, seMovio = false;
+  function abajo(e){ arrastrando = true; seMovio = false; const t = e.touches ? e.touches[0] : e; lx = t.clientX; ly = t.clientY; }
+  function mueve(e){
+    if (!arrastrando) return;
+    const t = e.touches ? e.touches[0] : e;
+    const dx = (t.clientX - lx) / innerWidth, dy = (t.clientY - ly) / innerHeight;
+    if (Math.abs(dx) + Math.abs(dy) > .004) seMovio = true;
+    rotY -= dx * 3.2; rotX = Math.max(-1.25, Math.min(1.25, rotX - dy * 2.4));
+    lx = t.clientX; ly = t.clientY;
+  }
+  function arriba(e){
+    if (arrastrando && !seMovio && e.target === canvas) {
+      const t = (e.changedTouches ? e.changedTouches[0] : e);
+      ráfagaCorazones(t.clientX, t.clientY, 7);
+    }
+    arrastrando = false;
+  }
+  // los controles se enganchan una sola vez: si no, al entrar y salir de la
+  // galaxia se irían acumulando y el giro se volvería cada vez más brusco
+  if (!window.__controlesGalaxia) {
+    window.__controlesGalaxia = true;
+  addEventListener("mousedown", abajo); addEventListener("mousemove", mueve); addEventListener("mouseup", arriba);
+  addEventListener("touchstart", abajo, { passive: true }); addEventListener("touchmove", mueve, { passive: true }); addEventListener("touchend", arriba, { passive: true });
+  addEventListener("wheel", e => { targetDist += e.deltaY * .3; targetDist = Math.max(180, Math.min(1600, targetDist)); }, { passive: true });
+  let pellizco = 0;
+  addEventListener("touchmove", e => {
+    if (e.touches && e.touches.length === 2) {
+      e.preventDefault();
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (pellizco) { targetDist += (pellizco - d) * .6; targetDist = Math.max(180, Math.min(1600, targetDist)); }
+      pellizco = d;
+    }
+  }, { passive: false });
+  addEventListener("touchend", () => { pellizco = 0; }, { passive: true });
+
+  addEventListener("resize", () => {
+    if (!escenaViva) return;
+    const [an, al] = medidaPantalla();
+    camera.aspect = an / al;
+    camera.updateProjectionMatrix();
+    renderer.setSize(an, al);
+  });
+  }   /* fin de los controles que solo se enganchan una vez */
+
+  /* --- bucle de animación --- */
+  let t = 0;
+  requestAnimationFrame(() => {
+    if (!escenaViva) return;
+    const [an, al] = medidaPantalla();
+    camera.aspect = an / al;
+    camera.updateProjectionMatrix();
+    renderer.setSize(an, al);
+  });
+
+  crearGalaxiaDeFotos();        // empieza a poblar la galaxia por tandas
+
+  animando = true;
+  (function anima() {
+    if (!escenaViva) return;                 // la galaxia se desmontó
+    requestAnimationFrame(anima);
+    // si la galaxia no está a la vista, no hay nada que dibujar (ahorra batería)
+    if (!document.body.classList.contains("iniciado")) return;
+    t += .01;
+
+    if (galaxia) galaxia.rotation.y += .0006;
+    // titileo sutil de las estrellas brillantes
+    if (estrellasBrillantes) estrellasBrillantes.material.opacity = .75 + .25 * Math.sin(t * 2.1);
+
+    const lat = 1 + .09 * Math.pow(Math.abs(Math.sin(t * 2.4)), 3);
+    corazonGrupo.scale.set(lat, lat, lat);
+    corazonGrupo.rotation.y = Math.sin(t * .4) * .35;
+
+    if (camaraModelo) {                       // la cámara gira y flota suavecito
+      camaraModelo.rotation.y += .006;
+      camaraModelo.position.y = Math.sin(t * 1.1) * 4;
+    }
+
+    halo.scale.set(300 * (1 + .04 * Math.sin(t * .8)), 300 * (1 + .04 * Math.sin(t * .8)), 1);
+    textoCentro.material.opacity = .85 + .15 * Math.sin(t * 2);
+
+    grupoFotos.children.forEach(sp => {
+      const u = sp.userData;
+      u.ang += u.vel;
+      sp.position.set(Math.cos(u.ang) * u.r, u.y0 + Math.sin(t * 1.2 + u.fase) * 6, Math.sin(u.ang) * u.r);
+    });
+
+    grupoFrases.children.forEach(sp => {
+      const u = sp.userData;
+      u.theta += u.vel;
+      sp.position.setFromSphericalCoords(u.r + Math.sin(t + u.fase) * 6, u.phi, u.theta);
+      sp.material.opacity = .65 + .35 * Math.sin(t * 1.6 + u.fase);
+    });
+
+    for (let i = fugaces.length - 1; i >= 0; i--) {
+      const f = fugaces[i]; f.userData.t += 1;
+      const pos = f.geometry.attributes.position.array;
+      for (let j = 27; j > 0; j--) { pos[j*3] = pos[(j-1)*3]; pos[j*3+1] = pos[(j-1)*3+1]; pos[j*3+2] = pos[(j-1)*3+2]; }
+      const head = f.userData.inicio.clone().addScaledVector(f.userData.dir, f.userData.t * 14);
+      pos[0] = head.x; pos[1] = head.y; pos[2] = head.z;
+      f.geometry.attributes.position.needsUpdate = true;
+      f.material.opacity = Math.max(0, 1 - f.userData.t / 110);
+      if (f.userData.t > 120) { scene.remove(f); fugaces.splice(i, 1); }
+    }
+
+    currentDist += (targetDist - currentDist) * .06;
+    const cx = Math.cos(rotX), sx = Math.sin(rotX), cy = Math.cos(rotY), sy = Math.sin(rotY);
+    camera.position.set(currentDist * sy * cx, currentDist * sx, currentDist * cy * cx);
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+  })();
+}
+
+function desmontarGalaxia() {
+  if (!escenaViva) return;
+  escenaViva = false;
+  animando = false;
+  try {
+    scene.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      const m = o.material;
+      if (m) (Array.isArray(m) ? m : [m]).forEach(x => {
+        if (x.map) x.map.dispose();
+        x.dispose();
+      });
+    });
+    renderer.dispose();
+    if (renderer.forceContextLoss) renderer.forceContextLoss();
+  } catch (e) {}
+  renderer = null; scene = null; camera = null;
+
+  // Un lienzo al que se le destruyó el contexto ya no sirve para uno nuevo:
+  // se cambia por uno limpio para que al volver a entrar la galaxia se vea.
+  const viejo = document.getElementById("c");
+  if (viejo) {
+    const nuevo = document.createElement("canvas");
+    nuevo.id = "c";
+    viejo.replaceWith(nuevo);
+  }
+}
+
+
+} /* fin iniciar() */
+</script>
+</body>
+</html>
