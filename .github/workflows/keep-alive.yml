@@ -8,10 +8,21 @@ on:
     - cron: "0 12 */2 * *"   # cada 2 días a las 12:00 UTC
   workflow_dispatch: {}       # también se puede lanzar a mano
 
+# GitHub apaga los flujos programados tras 60 días sin actividad en el repositorio.
+# Por eso el primer paso se vuelve a "habilitar" a sí mismo en cada corrida.
+permissions:
+  actions: write
+
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
     steps:
+      - name: Mantener este flujo habilitado en GitHub
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-alive.yml/enable"
+
       - name: Actividad en Supabase (subir, borrar y leer)
         env:
           URL: ${{ secrets.SUPABASE_URL }}
